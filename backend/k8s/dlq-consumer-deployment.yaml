@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aura-dlq-consumer
+  namespace: aura
+  labels:
+    app: aura-dlq-consumer
+    component: dlq-consumer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aura-dlq-consumer
+  template:
+    metadata:
+      labels:
+        app: aura-dlq-consumer
+        component: dlq-consumer
+    spec:
+      containers:
+        - name: aura-dlq-consumer
+          image: aura-backend:local
+          imagePullPolicy: IfNotPresent
+          command: ["node", "streaming/dlqConsumer.js"]
+          envFrom:
+            - configMapRef:
+                name: aura-config
+            - secretRef:
+                name: aura-secrets
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

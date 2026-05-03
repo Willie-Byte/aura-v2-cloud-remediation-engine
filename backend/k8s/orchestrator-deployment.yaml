@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aura-orchestrator
+  namespace: aura
+  labels:
+    app: aura-orchestrator
+    component: orchestrator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aura-orchestrator
+  template:
+    metadata:
+      labels:
+        app: aura-orchestrator
+        component: orchestrator
+    spec:
+      containers:
+        - name: aura-orchestrator
+          image: aura-backend:local
+          imagePullPolicy: IfNotPresent
+          command: ["node", "streaming/orchestrator.js"]
+          envFrom:
+            - configMapRef:
+                name: aura-config
+            - secretRef:
+                name: aura-secrets
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

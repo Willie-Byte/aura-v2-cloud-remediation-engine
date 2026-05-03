@@ -1,0 +1,47 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "Aura V2 backend and streaming prototype",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "stream:producer": "node streaming/producer.js",
+    "stream:telemetry": "node streaming/telemetryProducer.js ssh",
+    "stream:telemetry:ssh": "node streaming/telemetryProducer.js ssh",
+    "stream:telemetry:pqc": "node streaming/telemetryProducer.js pqc",
+    "stream:telemetry-normalizer": "node streaming/telemetryNormalizer.js",
+    "stream:bad-command": "node streaming/badCommandProducer.js",
+    "stream:apply-test": "node streaming/applyCommandProducer.js",
+    "stream:approve": "node streaming/approvalDecisionProducer.js approve",
+    "stream:reject": "node streaming/approvalDecisionProducer.js reject",
+    "stream:orchestrator": "node streaming/orchestrator.js",
+    "stream:worker": "node streaming/worker.js",
+    "stream:audit": "node streaming/auditConsumer.js",
+    "stream:results": "node streaming/resultConsumer.js",
+    "stream:dlq": "node streaming/dlqConsumer.js",
+    "stream:approval": "node streaming/approvalConsumer.js",
+    "stream:approval-decisions": "node streaming/approvalDecisionConsumer.js",
+    "stream:demo": "concurrently \"npm run stream:audit\" \"npm run stream:results\" \"npm run stream:approval\" \"npm run stream:approval-decisions\" \"npm run stream:telemetry-normalizer\" \"npm run stream:worker\" \"npm run stream:orchestrator\"",
+    "stream:full": "concurrently \"npm run stream:audit\" \"npm run stream:results\" \"npm run stream:dlq\" \"npm run stream:approval\" \"npm run stream:approval-decisions\" \"npm run stream:telemetry-normalizer\" \"npm run stream:worker\" \"npm run stream:orchestrator\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@azure/identity": "^4.13.1",
+    "@azure/keyvault-secrets": "^4.11.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "kafkajs": "^2.2.4",
+    "mongoose": "^9.4.1",
+    "octokit": "^5.0.5",
+    "openai": "^6.34.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1",
+    "nodemon": "^3.1.14"
+  }
+}

@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aura-approval-decisions
+  namespace: aura
+  labels:
+    app: aura-approval-decisions
+    component: approval-decision-consumer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aura-approval-decisions
+  template:
+    metadata:
+      labels:
+        app: aura-approval-decisions
+        component: approval-decision-consumer
+    spec:
+      containers:
+        - name: aura-approval-decisions
+          image: aura-backend:local
+          imagePullPolicy: IfNotPresent
+          command: ["node", "streaming/approvalDecisionConsumer.js"]
+          envFrom:
+            - configMapRef:
+                name: aura-config
+            - secretRef:
+                name: aura-secrets
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

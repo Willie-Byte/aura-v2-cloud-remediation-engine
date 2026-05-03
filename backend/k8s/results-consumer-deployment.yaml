@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aura-results-consumer
+  namespace: aura
+  labels:
+    app: aura-results-consumer
+    component: results-consumer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aura-results-consumer
+  template:
+    metadata:
+      labels:
+        app: aura-results-consumer
+        component: results-consumer
+    spec:
+      containers:
+        - name: aura-results-consumer
+          image: aura-backend:local
+          imagePullPolicy: IfNotPresent
+          command: ["node", "streaming/resultConsumer.js"]
+          envFrom:
+            - configMapRef:
+                name: aura-config
+            - secretRef:
+                name: aura-secrets
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aura-config
+  namespace: aura
+data:
+  NODE_ENV: "production"
+  START_STREAM_BRIDGE: "false"
+
+  KAFKA_CLIENT_ID: "aura-v2"
+  KAFKA_LOG_LEVEL: "ERROR"
+  KAFKAJS_NO_PARTITIONER_WARNING: "1"
+
+  KAFKA_CONNECTION_TIMEOUT_MS: "15000"
+  KAFKA_AUTH_TIMEOUT_MS: "15000"
+  KAFKA_REQUEST_TIMEOUT_MS: "45000"
+  KAFKA_RETRIES: "10"
+  KAFKA_INITIAL_RETRY_TIME_MS: "500"
+  KAFKA_MAX_RETRY_TIME_MS: "30000"
+  KAFKA_SESSION_TIMEOUT_MS: "30000"
+  KAFKA_HEARTBEAT_INTERVAL_MS: "3000"
+  KAFKA_REBALANCE_TIMEOUT_MS: "60000"
+
+  KAFKA_RAW_TELEMETRY_TOPIC: "raw-telemetry"
+  KAFKA_TOPIC: "threat-ingest"
+  KAFKA_REMEDIATION_COMMANDS_TOPIC: "remediation-commands"
+  KAFKA_APPROVAL_QUEUE_TOPIC: "approval-queue"
+  KAFKA_APPROVAL_DECISIONS_TOPIC: "approval-decisions"
+  KAFKA_RESULTS_TOPIC: "execution-results"
+  KAFKA_AUDIT_TOPIC: "audit-log"
+  KAFKA_DLQ_TOPIC: "remediation-dlq"

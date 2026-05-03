@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aura-worker
+  namespace: aura
+  labels:
+    app: aura-worker
+    component: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aura-worker
+  template:
+    metadata:
+      labels:
+        app: aura-worker
+        component: worker
+    spec:
+      containers:
+        - name: aura-worker
+          image: aura-backend:local
+          imagePullPolicy: IfNotPresent
+          command: ["node", "streaming/worker.js"]
+          envFrom:
+            - configMapRef:
+                name: aura-config
+            - secretRef:
+                name: aura-secrets
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

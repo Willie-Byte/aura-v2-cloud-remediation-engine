@@ -1,0 +1,40 @@
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: aura-kafka-trigger-auth
+  namespace: aura
+spec:
+  secretTargetRef:
+    - parameter: username
+      name: keda-kafka-secrets
+      key: username
+    - parameter: password
+      name: keda-kafka-secrets
+      key: password
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: aura-worker-kafka-scaledobject
+  namespace: aura
+spec:
+  scaleTargetRef:
+    name: aura-worker
+
+  pollingInterval: 30
+  cooldownPeriod: 120
+  minReplicaCount: 1
+  maxReplicaCount: 10
+
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: "pkc-921jm.us-east-2.aws.confluent.cloud:9092"
+        consumerGroup: "aura-v2-worker-group"
+        topic: "remediation-commands"
+        lagThreshold: "5"
+        offsetResetPolicy: latest
+        tls: enable
+        sasl: plaintext
+      authenticationRef:
+        name: aura-kafka-trigger-auth

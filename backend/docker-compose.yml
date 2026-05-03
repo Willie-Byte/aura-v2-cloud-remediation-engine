@@ -1,0 +1,139 @@
+services:
+  aura-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aura-backend:local
+    container_name: aura-server
+    env_file:
+      - .env.docker
+    ports:
+      - "5002:5001"
+    environment:
+      START_STREAM_BRIDGE: "false"
+    command: ["node", "server.js"]
+    restart: unless-stopped
+
+  aura-orchestrator:
+    image: aura-backend:local
+    container_name: aura-orchestrator
+    env_file:
+      - .env.docker
+      - streaming/.env
+    command: ["node", "streaming/orchestrator.js"]
+    restart: unless-stopped
+    depends_on:
+      - aura-server
+
+  aura-worker:
+    image: aura-backend:local
+    container_name: aura-worker
+    env_file:
+      - .env.docker
+      - streaming/.env
+    command: ["node", "streaming/worker.js"]
+    restart: unless-stopped
+    depends_on:
+      - aura-server
+
+  aura-telemetry-normalizer:
+    image: aura-backend:local
+    container_name: aura-telemetry-normalizer
+    env_file:
+      - .env.docker
+      - streaming/.env
+    command: ["node", "streaming/telemetryNormalizer.js"]
+    restart: unless-stopped
+    depends_on:
+      - aura-server
+
+  aura-approval-consumer:
+    image: aura-backend:local
+    container_name: aura-approval-consumer
+    env_file:
+      - .env.docker
+      - streaming/.env
+    command: ["node", "streaming/approvalConsumer.js"]
+    restart: unless-stopped
+    depends_on:
+      - aura-server
+
+  aura-approval-decisions:
+    image: aura-backend:local
+    container_name: aura-approval-decisions
+    env_file:
+      - .env.docker
+      - streaming/.env
+    command: ["node", "streaming/approvalDecisionConsumer.js"]
+    restart: unless-stopped
+    depends_on:
+      - aura-server
+
+  aura-audit-consumer:
+    image: aura-backend:local
+    container_name: aura-audit-consumer
+    env_file:
+      - .env.docker
+      - streaming/.env
+    command: ["node", "streaming/auditConsumer.js"]
+    restart: unless-stopped
+    depends_on:
+      - aura-server
+
+  aura-results-consumer:
+    image: aura-backend:local
+    container_name: aura-results-consumer
+    env_file:
+      - .env.docker
+      - streaming/.env
+    command: ["node", "streaming/resultConsumer.js"]
+    restart: unless-stopped
+    depends_on:
+      - aura-server
+
+  aura-dlq-consumer:
+    image: aura-backend:local
+    container_name: aura-dlq-consumer
+    env_file:
+      - .env.docker
+      - streaming/.env
+    command: ["node", "streaming/dlqConsumer.js"]
+    restart: unless-stopped
+    depends_on:
+      - aura-server
+
+  aura-telemetry-pqc:
+    image: aura-backend:local
+    container_name: aura-telemetry-pqc
+    env_file:
+      - .env.docker
+      - streaming/.env
+    command: ["node", "streaming/telemetryProducer.js", "pqc"]
+    profiles:
+      - tools
+    depends_on:
+      - aura-telemetry-normalizer
+
+  aura-telemetry-ssh:
+    image: aura-backend:local
+    container_name: aura-telemetry-ssh
+    env_file:
+      - .env.docker
+      - streaming/.env
+    command: ["node", "streaming/telemetryProducer.js", "ssh"]
+    profiles:
+      - tools
+    depends_on:
+      - aura-telemetry-normalizer
+
+  aura-approval-producer:
+    image: aura-backend:local
+    container_name: aura-approval-producer
+    env_file:
+      - .env.docker
+      - streaming/.env
+    entrypoint: ["node", "streaming/approvalDecisionProducer.js"]
+    profiles:
+      - tools
+    depends_on:
+      - aura-approval-decisions

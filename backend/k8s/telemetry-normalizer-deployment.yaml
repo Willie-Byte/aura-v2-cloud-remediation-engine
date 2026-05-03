@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aura-telemetry-normalizer
+  namespace: aura
+  labels:
+    app: aura-telemetry-normalizer
+    component: telemetry-normalizer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aura-telemetry-normalizer
+  template:
+    metadata:
+      labels:
+        app: aura-telemetry-normalizer
+        component: telemetry-normalizer
+    spec:
+      containers:
+        - name: aura-telemetry-normalizer
+          image: aura-backend:local
+          imagePullPolicy: IfNotPresent
+          command: ["node", "streaming/telemetryNormalizer.js"]
+          envFrom:
+            - configMapRef:
+                name: aura-config
+            - secretRef:
+                name: aura-secrets
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
