@@ -17,7 +17,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: aura-approval-producer
-          image: aura-backend:local
+          image: aurav2registry17722.azurecr.io/aura-backend:v1
           imagePullPolicy: IfNotPresent
           command:
             - /bin/sh

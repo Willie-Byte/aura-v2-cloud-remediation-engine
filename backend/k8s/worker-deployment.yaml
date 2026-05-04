@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: aura-worker
-          image: aura-backend:local
+          image: aurav2registry17722.azurecr.io/aura-backend:v1
           imagePullPolicy: IfNotPresent
           command: ["node", "streaming/worker.js"]
           envFrom:
