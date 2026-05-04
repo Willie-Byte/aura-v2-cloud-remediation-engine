@@ -1,470 +1,871 @@
-# Aura V2 Streaming Spike
+# Aura V2 — Autonomous Cloud Remediation Engine
 
-## Overview
+Aura V2 is an enterprise-style cloud security remediation platform that detects cloud misconfigurations and live runtime security events, normalizes them into actionable threats, generates AI-assisted remediation plans, requires human approval, and publishes final simulated execution results with audit visibility.
 
-Aura V2 is a streaming architecture prototype built to evolve Aura beyond the webhook-based design used in Aura V1. Instead of relying on a synchronous request-response backend flow, this version proves that threats, AI-generated remediation commands, validation, execution results, dead-letter handling, and audit events can move across a decoupled Kafka backbone.
+The project demonstrates a real-time security pipeline using Node.js, Express, MongoDB, React, Kafka, Azure AKS, Kubernetes, Tetragon eBPF telemetry, and AI-assisted remediation planning.
 
-This prototype focuses on the architectural core of an event-driven remediation system. The goal is to validate a safer, more scalable, and more observable pipeline before connecting real cloud execution or real telemetry sources.
+## Project Status
 
-Aura V2 follows a pipeline-first strategy: build the “dumb machine” first, prove each stage works independently, then gradually add intelligence, validation, execution safety, and eventually real telemetry.
+Aura V2 currently supports two major demo paths:
 
-## What This Prototype Proves
+1. Live runtime security detection with Tetragon eBPF on Azure AKS.
+2. Simulated cloud posture and post-quantum cryptography readiness telemetry.
 
-Aura V2 currently proves the following:
-
-1. A threat event can be published into Kafka.
-2. An orchestrator can consume that threat event.
-3. The orchestrator can use AI to generate a remediation plan.
-4. The system uses a shared remediation policy rulebook before execution.
-5. A worker can consume remediation commands and validate them.
-6. Invalid remediation commands are rejected and sent to a dead-letter queue.
-7. Rejected commands also produce execution result records.
-8. Valid remediation commands can be executed in safe simulation mode.
-9. Dangerous `apply` execution requests are blocked.
-10. Duplicate remediation commands can be detected and skipped.
-11. Audit events are streamed into a dedicated audit topic.
-12. Execution outcomes are streamed into a dedicated execution results topic.
-13. A frontend Streaming Monitor can display stream health, Kafka topics, audit events, execution results, rejected commands, and execution mode.
-
-## Current Build Status
-
-Aura V2 is currently in Step 3 of the pipeline-first strategy.
-
-- Step 1: Dumb Pipe — Complete
-- Step 2: AI Brain — Prototype Complete
-- Step 3: Gate & Muscle — In Progress
-- Step 4: Real Sensors / eBPF — Not Started
-
-Completed Step 3 features include:
-
-- shared remediation policy layer
-- issue type to action validation
-- resource type validation
-- simulation-only execution mode
-- apply-mode rejection test
-- DLQ handling
-- rejected execution results
-- audit event tracking
-- frontend streaming monitor visibility
-
-Not completed yet:
-
-- real Terraform payload generation
-- AST or Terraform plan validation
-- Terraform dry-run execution
-- isolated execution runner
-- real Azure OIDC-based execution
-- real eBPF telemetry ingestion
-
-## Kafka Topics Used
-
-The prototype currently uses five Kafka topics:
-
-- `threat-ingest`  
-  Receives incoming threat events.
-
-- `remediation-commands`  
-  Receives remediation commands published by the orchestrator.
-
-- `remediation-dlq`  
-  Receives invalid remediation commands that fail validation.
-
-- `audit-log`  
-  Receives audit events for major system actions.
-
-- `execution-results`  
-  Receives execution outcome events from the worker.
-
-## Current End-to-End Flow
-
-The current end-to-end flow is:
-
-1. `producer.js` publishes a fake threat event to `threat-ingest`.
-2. `orchestrator.js` consumes the threat event.
-3. The orchestrator calls the AI remediation service.
-4. The AI writes a safe remediation plan, but it does not choose the action.
-5. The system chooses the approved action from `remediationPolicy.js`.
-6. The orchestrator publishes the remediation command to `remediation-commands`.
-7. `worker.js` consumes the remediation command.
-8. The worker validates the command using `validator.js`.
-9. If valid, the worker simulates execution and publishes an execution result.
-10. If invalid, the worker sends the command to `remediation-dlq`.
-11. Rejected commands also publish an execution result with `status: rejected`.
-12. The worker publishes audit events for lifecycle actions.
-13. `auditConsumer.js`, `dlqConsumer.js`, and `resultConsumer.js` can be used to observe the system output.
-14. The frontend Streaming Monitor can display stream health, results, audit events, and safety status.
-
-## Files in `backend/streaming`
-
-- `producer.js`  
-  Simulates a threat source and publishes fake threat events.
-
-- `orchestrator.js`  
-  Acts as the orchestrator. Consumes threat events, calls the AI remediation service, and publishes remediation commands.
-
-- `aiRemediationService.js`  
-  Uses OpenAI to generate a safe remediation plan. The AI only writes the plan text. It does not choose the final action or execution mode.
-
-- `remediationPolicy.js`  
-  Shared policy rulebook for supported issue types, expected actions, allowed resource types, and descriptions.
-
-- `validator.js`  
-  Validates remediation command structure, supported issue types, expected actions, resource types, status, and execution mode.
-
-- `worker.js`  
-  Consumes remediation commands, validates them, handles duplicates, simulates execution, publishes results, and sends invalid commands to DLQ.
-
-- `badCommandProducer.js`  
-  Sends an intentionally invalid remediation command to prove the validator and DLQ path work.
-
-- `applyCommandProducer.js`  
-  Sends an intentionally dangerous `executionMode: "apply"` command to prove real execution is blocked.
-
-- `dlqConsumer.js`  
-  Listens to the dead-letter queue topic.
-
-- `auditProducer.js`  
-  Publishes audit events to the audit topic.
-
-- `auditConsumer.js`  
-  Listens to the audit topic.
-
-- `resultConsumer.js`  
-  Listens to the execution results topic.
-
-- `kafkaClient.js`  
-  Shared Kafka client configuration used across the streaming services.
-
-## Remediation Policy Layer
-
-The shared remediation policy acts as the system rulebook.
-
-Current supported mappings:
-
-| Issue Type | Expected Action | Allowed Resource Type |
-|---|---|---|
-| `publicStorageAccess` | `disablePublicAccess` | `storageAccount` |
-| `publicSSHAccess` | `restrictSSHAccess` | `networkSecurityGroup` |
-| `publicRDPAccess` | `restrictRDPAccess` | `networkSecurityGroup` |
-| `unencryptedDatabase` | `enableDatabaseEncryption` | `sqlDatabase` |
-| `weakTlsVersion` | `enforceModernTLS` | `appService` |
-
-This prevents the AI from freely choosing dangerous or incorrect remediation actions.
-
-## Validation Layer
-
-The validation layer currently checks:
-
-- command payload must be a valid object
-- required command fields
-- supported issue type
-- allowed action type
-- issue type must match the expected action
-- resource type must match the policy
-- status must be `pending`
-- execution mode must be `simulate`
-- generated remediation plan must exist
-
-The worker currently rejects any command that requests:
+The live eBPF flow has been tested end-to-end:
 
 ```text
-executionMode: "apply"
+Real AKS pod exec
+  → Tetragon eBPF process_exec event
+  → Aura Tetragon bridge
+  → Kafka raw-telemetry topic
+  → Telemetry normalizer
+  → unauthorizedPodExec threat
+  → AI remediation orchestrator
+  → Worker validation
+  → Human approval queue
+  → Dashboard approval
+  → Final simulated execution result
+```
 
-Only this execution mode is allowed right now:
+Final execution is intentionally kept in `simulate` mode for safety.
 
-executionMode: "simulate"
+## What Aura Demonstrates
 
-This is intentional. Aura V2 should not perform real cloud changes until Terraform dry-run validation, isolated execution, and real approval controls exist.
+Aura is designed to show how an enterprise remediation engine can combine runtime detection, cloud security posture management, AI-assisted remediation planning, human approval, and auditability.
 
-Dead-Letter Queue
+Key capabilities include:
 
-If a remediation command fails validation, it is not executed.
+* Live eBPF monitoring on AKS with Tetragon.
+* Suspicious pod exec detection.
+* Kafka-based event streaming.
+* Telemetry normalization into security threats.
+* AI-generated remediation plans.
+* Agentic validation of remediation output.
+* Human approval gates before final execution.
+* Safe simulated execution mode.
+* Dashboard-based approval workflow.
+* MongoDB persistence for alerts and audit logs.
+* Webhook ingestion for Azure, AWS, and GCP-style events.
+* Quantum risk reporting and PQC readiness simulation.
+* Kubernetes deployment manifests for AKS.
+* Docker support for local development and containerized deployment.
 
-Instead, the worker publishes the rejected payload to:
+## Architecture
 
-remediation-dlq
+```text
+                    ┌──────────────────────────┐
+                    │  AKS Workloads / Lab Pod  │
+                    └─────────────┬────────────┘
+                                  │
+                                  ▼
+                    ┌──────────────────────────┐
+                    │      Tetragon eBPF        │
+                    │   process_exec telemetry  │
+                    └─────────────┬────────────┘
+                                  │
+                                  ▼
+                    ┌──────────────────────────┐
+                    │ Aura Tetragon Bridge      │
+                    │ tetragonBridge.js         │
+                    └─────────────┬────────────┘
+                                  │
+                                  ▼
+                    ┌──────────────────────────┐
+                    │ Kafka: raw-telemetry      │
+                    └─────────────┬────────────┘
+                                  │
+                                  ▼
+                    ┌──────────────────────────┐
+                    │ Telemetry Normalizer      │
+                    │ telemetryNormalizer.js    │
+                    └─────────────┬────────────┘
+                                  │
+                                  ▼
+                    ┌──────────────────────────┐
+                    │ Kafka: threat-ingest      │
+                    └─────────────┬────────────┘
+                                  │
+                                  ▼
+                    ┌──────────────────────────┐
+                    │ Orchestrator              │
+                    │ AI remediation planning   │
+                    └─────────────┬────────────┘
+                                  │
+                                  ▼
+                    ┌──────────────────────────┐
+                    │ Kafka: remediation-commands│
+                    └─────────────┬────────────┘
+                                  │
+                                  ▼
+                    ┌──────────────────────────┐
+                    │ Worker                    │
+                    │ validation + approval gate│
+                    └─────────────┬────────────┘
+                                  │
+                                  ▼
+                    ┌──────────────────────────┐
+                    │ Kafka: approval-queue     │
+                    └─────────────┬────────────┘
+                                  │
+                                  ▼
+                    ┌──────────────────────────┐
+                    │ React Dashboard Approval  │
+                    └─────────────┬────────────┘
+                                  │
+                                  ▼
+                    ┌──────────────────────────┐
+                    │ Kafka: approval-decisions │
+                    └─────────────┬────────────┘
+                                  │
+                                  ▼
+                    ┌──────────────────────────┐
+                    │ Approval Decision Consumer│
+                    │ simulated final execution │
+                    └─────────────┬────────────┘
+                                  │
+                                  ▼
+                    ┌──────────────────────────┐
+                    │ Kafka: execution-results  │
+                    └─────────────┬────────────┘
+                                  │
+                                  ▼
+                    ┌──────────────────────────┐
+                    │ Streaming Monitor / Audit │
+                    └──────────────────────────┘
+```
 
-The worker also publishes:
+## Tech Stack
 
-an audit event with REMEDIATION_REJECTED_TO_DLQ
-an execution result with status: rejected
+### Backend
 
-This ensures invalid commands are preserved for review instead of disappearing from the system.
+* Node.js
+* Express
+* MongoDB / Mongoose
+* KafkaJS
+* OpenAI / Azure OpenAI integration
+* Tetragon log bridge
+* Kubernetes deployment manifests
 
-Execution Modes
+### Frontend
 
-Aura V2 now includes an explicit execution mode field.
+* React
+* React Router
+* Axios
+* Dashboard pages for:
 
-Current supported mode:
+  * Alerts
+  * Alert Details
+  * Quantum Risk
+  * Webhook Events
+  * Streaming Monitor
 
-simulate
+### Infrastructure
 
-Future possible modes:
+* Azure AKS
+* Azure Container Registry
+* Kubernetes
+* Tetragon eBPF
+* Helm
+* Docker
+* Confluent Cloud Kafka or compatible Kafka cluster
 
-plan
-apply
+## Main Features
 
-Current behavior:
+### 1. Live eBPF Runtime Security
 
-Execution Mode	Current Result
-simulate	Allowed
-plan	Rejected
-apply	Rejected
+Aura can monitor live AKS runtime activity using Tetragon. The Tetragon bridge tails the Tetragon JSON log, filters monitored namespaces, detects suspicious process execution, and publishes normalized telemetry to Kafka.
 
-The applyCommandProducer.js file exists to prove that apply mode is blocked.
+Example suspicious commands include:
 
-Idempotency
+```text
+whoami
+uname -a
+cat /etc/passwd
+printenv
+curl
+wget
+sh
+bash
+```
 
-The worker currently includes in-memory idempotency protection using a Set of processed remediation IDs.
+Detected runtime activity is mapped into the `unauthorizedPodExec` issue type.
 
-This allows the worker to skip duplicate remediation commands instead of executing the same action twice.
+### 2. AI Remediation Planning
 
-In a production-grade version, this should move to a durable store such as Redis, PostgreSQL, or another distributed coordination mechanism.
+The orchestrator receives normalized threats and generates a remediation command using AI. The output is validated against approved remediation policy before moving forward.
 
-Audit Logging
+For runtime pod exec detections, Aura generates an investigation-focused plan instead of destructive actions. Recommended actions include:
 
-Aura V2 publishes audit events for important system actions such as:
+* Verify whether the pod exec activity was authorized.
+* Review pod, container, and process evidence.
+* Inspect Kubernetes RBAC roles and bindings.
+* Recommend least-privilege access controls.
+* Preserve auditability.
 
-THREAT_RECEIVED
-REMEDIATION_GENERATED
-REMEDIATION_COMMAND_RECEIVED
-REMEDIATION_EXECUTED
-REMEDIATION_DUPLICATE_SKIPPED
-REMEDIATION_REJECTED_TO_DLQ
-REMEDIATION_GENERATION_FAILED
+### 3. Human Approval Gate
 
-This makes the pipeline observable and creates a foundation for future dashboards or replayable event history.
+High-risk remediations are not executed automatically. They are routed to an approval queue and displayed in the dashboard.
 
-Execution Results
+A reviewer can approve or reject the remediation from the Streaming Monitor page.
 
-The worker publishes execution outcomes into:
+### 4. Safe Simulated Execution
 
-execution-results
+Aura intentionally keeps final execution in `simulate` mode. This means the pipeline behaves like a real enterprise remediation system, but it does not make destructive infrastructure changes.
 
-Execution results can include statuses such as:
+This is useful for:
 
-executed
-rejected
-skipped_duplicate
+* Portfolio demonstrations.
+* Classroom security labs.
+* Safe attack simulation.
+* Runtime detection training.
+* Approval workflow validation.
 
-This separates execution outcomes from raw logs and makes the final state of remediation actions part of the event stream.
+### 5. Streaming Monitor Dashboard
 
-Example rejected result:
+The Streaming Monitor page shows:
 
-{
-  "status": "rejected",
-  "executionMode": "apply",
-  "details": {
-    "reason": "validation_failed",
-    "message": "Remediation command failed validation and was sent to the DLQ."
-  }
-}
+* Stream bridge status.
+* Raw telemetry count.
+* Live eBPF runtime events.
+* Normalized threat count.
+* Awaiting approvals.
+* Human decisions.
+* Execution results.
+* Audit timeline.
+* Raw telemetry details.
+* eBPF evidence.
+* Approval decision details.
 
-Example executed result:
+### 6. Quantum Risk and PQC Readiness
 
-{
-  "status": "executed",
-  "executionMode": "simulate",
-  "details": {
-    "message": "Simulated remediation executed successfully."
-  }
-}
-Frontend Streaming Monitor
+Aura also includes a post-quantum cryptography readiness demo. It can process simulated crypto telemetry for non-quantum-safe services and recommend TLS 1.3 with Kyber/ML-KEM hybrid key exchange where supported.
 
-The frontend includes a Streaming Monitor page that displays:
+This gives the project both runtime security and future-facing cryptography governance coverage.
 
-stream bridge status
-Kafka topic names
-audit event count
-execution result count
-latest execution status
-execution mode
-resource type
-rejected reason
-audit event timeline
-raw event payload details
+### 7. Webhook Intake
 
-This page makes the event-driven pipeline easier to understand without reading terminal logs.
+Aura supports webhook-style alert ingestion for:
 
-Environment Variables
+* Azure Event Grid-style payloads.
+* AWS EventBridge-style payloads.
+* GCP Eventarc-style payloads.
 
-The streaming prototype uses a .env file inside backend/streaming.
+Webhook alerts are normalized into the same Alert model used by dashboard workflows.
+
+## Repository Structure
+
+```text
+Aura-V2-Streaming-Spike/
+├── backend/
+│   ├── config/
+│   │   └── db.js
+│   ├── controllers/
+│   │   ├── alertController.js
+│   │   ├── auditLogController.js
+│   │   ├── remediationController.js
+│   │   └── webhookController.js
+│   ├── models/
+│   │   ├── Alert.js
+│   │   ├── AuditLog.js
+│   │   └── Remediation.js
+│   ├── routes/
+│   │   ├── alertRoutes.js
+│   │   ├── auditLogRoutes.js
+│   │   ├── remediationRoutes.js
+│   │   ├── streamingApprovalRoutes.js
+│   │   ├── streamingRoutes.js
+│   │   └── webhookRoutes.js
+│   ├── services/
+│   │   ├── aiService.js
+│   │   └── githubService.js
+│   ├── streaming/
+│   │   ├── aiRemediationService.js
+│   │   ├── approvalConsumer.js
+│   │   ├── approvalDecisionConsumer.js
+│   │   ├── approvalDecisionProducer.js
+│   │   ├── applyCommandProducer.js
+│   │   ├── auditConsumer.js
+│   │   ├── auditProducer.js
+│   │   ├── badCommandProducer.js
+│   │   ├── dlqConsumer.js
+│   │   ├── kafkaClient.js
+│   │   ├── orchestrator.js
+│   │   ├── remediationPolicy.js
+│   │   ├── resultConsumer.js
+│   │   ├── streamBridge.js
+│   │   ├── streamState.js
+│   │   ├── telemetryNormalizer.js
+│   │   ├── telemetryProducer.js
+│   │   ├── tetragonBridge.js
+│   │   ├── validator.js
+│   │   └── worker.js
+│   ├── k8s/
+│   │   ├── aura-namespace.yaml
+│   │   ├── aura-configmap.yaml
+│   │   ├── approval-consumer-deployment.yaml
+│   │   ├── approval-decision-consumer-deployment.yaml
+│   │   ├── approval-producer-job.yaml
+│   │   ├── audit-consumer-deployment.yaml
+│   │   ├── dlq-consumer-deployment.yaml
+│   │   ├── orchestrator-deployment.yaml
+│   │   ├── results-consumer-deployment.yaml
+│   │   ├── telemetry-normalizer-deployment.yaml
+│   │   ├── telemetry-pqc-job.yaml
+│   │   ├── tetragon-bridge-daemonset.yaml
+│   │   ├── worker-deployment.yaml
+│   │   └── keda-worker-scaledobject.yaml
+│   ├── scripts/
+│   │   ├── run-approval-job.sh
+│   │   ├── run-ebpf-approval-job.sh
+│   │   └── run-pqc-telemetry-job.sh
+│   ├── Dockerfile
+│   └── server.js
+├── client/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── ConfirmModal.js
+│   │   │   └── CreateAlertForm.js
+│   │   ├── pages/
+│   │   │   ├── AlertDetailsPage.js
+│   │   │   ├── AlertsPage.js
+│   │   │   ├── QuantumRiskPage.js
+│   │   │   ├── StreamingMonitorPage.js
+│   │   │   └── WebhookEventsPage.js
+│   │   ├── services/
+│   │   │   └── api.js
+│   │   └── App.js
+│   ├── Dockerfile
+│   └── nginx.conf
+├── docker-compose.yml
+└── README.md
+```
+
+## Environment Variables
+
+Create a `.env` file for the backend and streaming services.
 
 Example:
 
-KAFKA_BROKER=your_bootstrap_server_here:9092
-KAFKA_USERNAME=your_api_key
-KAFKA_PASSWORD=your_api_secret
+```env
+PORT=5001
+MONGO_URI=mongodb://localhost:27017/aura-v2
 
+KAFKA_CLIENT_ID=aura-v2
+KAFKA_BROKER=your-kafka-broker:9092
+KAFKA_USERNAME=your-kafka-username
+KAFKA_PASSWORD=your-kafka-password
+
+KAFKA_RAW_TELEMETRY_TOPIC=raw-telemetry
 KAFKA_TOPIC=threat-ingest
 KAFKA_REMEDIATION_TOPIC=remediation-commands
-KAFKA_DLQ_TOPIC=remediation-dlq
-KAFKA_AUDIT_TOPIC=audit-log
+KAFKA_APPROVAL_TOPIC=approval-queue
+KAFKA_APPROVAL_DECISIONS_TOPIC=approval-decisions
 KAFKA_RESULTS_TOPIC=execution-results
+KAFKA_AUDIT_TOPIC=audit-log
+KAFKA_DLQ_TOPIC=remediation-dlq
 
-OPENAI_API_KEY=your_openai_api_key
+START_STREAM_BRIDGE=true
+PERSIST_STREAMING_THREATS_TO_MONGO=true
 
-Do not commit real API keys or secrets to GitHub.
+OPENAI_API_KEY=your-openai-api-key
 
-How to Run
+AZURE_OPENAI_API_KEY=your-azure-openai-key
+AZURE_OPENAI_ENDPOINT=your-azure-openai-endpoint
+AZURE_OPENAI_DEPLOYMENT=your-deployment-name
+AZURE_OPENAI_API_VERSION=2024-02-15-preview
 
-Run the streaming services from the backend folder.
+GITHUB_TOKEN=your-github-token
+GITHUB_OWNER=your-github-username-or-org
+GITHUB_REPO=your-remediation-repo
+GITHUB_BASE_BRANCH=main
+```
 
-Start the full streaming system
-npm run stream:full
+For the frontend:
 
-This starts:
+```env
+REACT_APP_API_URL=http://localhost:5001/api
+```
 
-audit consumer
-result consumer
-DLQ consumer
-worker
-orchestrator
-Send a normal threat event
+Do not commit real secrets to GitHub.
 
-In a second terminal:
+## Local Development
 
-node streaming/producer.js publicSSHAccess
+### 1. Start the backend
 
-Other supported examples:
+```bash
+cd backend
+npm install
+START_STREAM_BRIDGE=true \
+PERSIST_STREAMING_THREATS_TO_MONGO=true \
+node server.js
+```
 
-node streaming/producer.js unencryptedDatabase
-node streaming/producer.js weakTlsVersion
-Send an invalid action test
-npm run stream:bad-command
+The backend should run on:
 
-Expected result:
+```text
+http://localhost:5001
+```
 
-command is rejected
-command is sent to DLQ
-audit event is published
-execution result has status: rejected
-Send a dangerous apply-mode test
-npm run stream:apply-test
+### 2. Start the frontend
 
-Expected result:
+```bash
+cd client
+npm install
+REACT_APP_API_URL=http://localhost:5001/api npm start
+```
 
-command is rejected
-command is sent to DLQ
-audit event is published
-execution result has status: rejected
-rejection reason says only simulate mode is supported
-NPM Scripts
+The frontend should run on:
 
-Useful scripts from the backend folder:
+```text
+http://localhost:3000
+```
 
-npm run stream:producer
-npm run stream:bad-command
-npm run stream:apply-test
-npm run stream:orchestrator
-npm run stream:worker
-npm run stream:audit
-npm run stream:results
-npm run stream:dlq
-npm run stream:demo
-npm run stream:full
-Example Happy Path
+### 3. Open the dashboard
 
-Start the full stream:
+```text
+http://localhost:3000
+```
 
-npm run stream:full
+Important pages:
 
-Send a valid threat:
+```text
+/                         Alerts dashboard
+/alerts/:id               Alert details
+/quantum-risk             Quantum risk report
+/webhook-events           Webhook event history
+/streaming-monitor        Streaming monitor and approval workflow
+```
 
-node streaming/producer.js publicSSHAccess
+## Docker
 
-Expected result:
+Build the backend image:
 
-A threat is published.
-The orchestrator receives the threat.
-AI generates safe remediation plan text.
-The policy layer selects restrictSSHAccess.
-The worker validates the command.
-The worker simulates execution.
-An execution result is published with status: executed.
-Audit events are produced.
-Example Invalid Action Path
+```bash
+cd backend
+docker build -t aura-backend:local .
+```
 
-Run:
+On Apple Silicon Macs, build an AMD64 image for AKS:
 
-npm run stream:bad-command
+```bash
+docker buildx build \
+  --platform linux/amd64 \
+  -t <your-acr>.azurecr.io/aura-backend:v2-ebpf-amd64 \
+  --push .
+```
 
-Expected result:
+Build the frontend image:
 
-A command is published with the wrong action.
-The worker rejects the command.
-The payload is sent to remediation-dlq.
-An audit event is published.
-An execution result is published with status: rejected.
-Example Apply-Mode Rejection Path
+```bash
+cd client
+docker build -t aura-frontend:local .
+```
 
-Run:
+## Kubernetes / AKS Deployment
 
-npm run stream:apply-test
+### 1. Connect to AKS
 
-Expected result:
+```bash
+az aks get-credentials \
+  --resource-group <resource-group> \
+  --name <aks-cluster-name> \
+  --overwrite-existing
+```
 
-A command is published with executionMode: "apply".
-The worker rejects it.
-The payload is sent to remediation-dlq.
-An audit event is published.
-An execution result is published with status: rejected.
+### 2. Apply namespace and config
 
-This proves Aura V2 refuses real execution while the system is still in simulation mode.
+```bash
+cd backend
+kubectl apply -f k8s/aura-namespace.yaml
+kubectl apply -f k8s/aura-configmap.yaml
+```
 
-Example Duplicate Path
+Create your Kubernetes secret from your real values before deploying workloads.
 
-If the same remediation command is published twice with the same remediation ID:
+Do not commit production secrets.
 
-The first command executes.
-The second command is skipped.
-An audit event is published for the duplicate skip.
-An execution result is published with status: skipped_duplicate.
-Why Aura V2 Exists
+### 3. Apply Aura workloads
 
-Aura V1 proved the product and workflow story:
+```bash
+kubectl apply -f k8s/telemetry-normalizer-deployment.yaml
+kubectl apply -f k8s/orchestrator-deployment.yaml
+kubectl apply -f k8s/worker-deployment.yaml
+kubectl apply -f k8s/approval-consumer-deployment.yaml
+kubectl apply -f k8s/approval-decision-consumer-deployment.yaml
+kubectl apply -f k8s/audit-consumer-deployment.yaml
+kubectl apply -f k8s/results-consumer-deployment.yaml
+kubectl apply -f k8s/dlq-consumer-deployment.yaml
+```
 
-multi-cloud alert intake
-AI remediation generation
-dashboard and alert pages
-webhook-driven orchestration
+### 4. Verify pods
 
-Aura V2 exists to prove the next architectural step:
+```bash
+kubectl get pods -n aura
+kubectl get deployments -n aura
+```
 
-event-driven flow
-decoupled services
-resilient failure handling
-replayable system activity
-clearer execution boundaries
-safer AI-assisted remediation
-observable audit and execution streams
-What Comes Next
+## Installing Tetragon on AKS
 
-Potential next steps for Aura V2 include:
+Add the Cilium Helm repo and install Tetragon:
 
-Durable idempotency storage.
-Stronger schema validation.
-Structured remediation payloads instead of only plan text.
-Terraform plan generation.
-Terraform or AST-based validation.
-Dry-run execution with terraform plan.
-Isolated execution runner.
-Human approval before apply.
-Real Azure OIDC-based execution.
-Real eBPF or cloud telemetry ingestion.
-Persistent audit/result storage.
-More advanced frontend monitoring.
-Summary
+```bash
+helm repo add cilium https://helm.cilium.io
+helm repo update
 
-Aura V2 is not a full product replacement yet. It is an architectural proof of concept that demonstrates how Aura can evolve from a webhook-based application into an event-driven remediation system with stronger safety, observability, and execution boundaries.
+helm upgrade --install tetragon cilium/tetragon -n kube-system
 
-The current system proves the most important foundation:
+kubectl rollout status -n kube-system ds/tetragon -w
+```
 
-events move through Kafka
-AI can generate remediation plans
-policy controls the final action
-the worker validates commands before execution
-invalid or dangerous commands are rejected
-rejected commands are preserved in the DLQ
-execution results are published for both success and failure
-the frontend can monitor the stream lifecycle
+Verify Tetragon:
+
+```bash
+kubectl get pods -n kube-system -l app.kubernetes.io/name=tetragon -o wide
+kubectl logs -n kube-system -l app.kubernetes.io/name=tetragon -c export-stdout --tail=50
+```
+
+## Deploying the Aura Tetragon Bridge
+
+The bridge runs as a DaemonSet and reads:
+
+```text
+/var/run/cilium/tetragon/tetragon.log
+```
+
+Apply it:
+
+```bash
+cd backend
+kubectl apply -f k8s/tetragon-bridge-daemonset.yaml
+```
+
+Check logs:
+
+```bash
+kubectl get pods -n aura -l app=aura-tetragon-bridge -o wide
+kubectl logs -n aura -l app=aura-tetragon-bridge --tail=100
+```
+
+The bridge should show:
+
+```text
+[tetragon-bridge] Starting Tetragon to Kafka bridge
+[tetragon-bridge] Log path: /var/run/cilium/tetragon/tetragon.log
+[tetragon-bridge] Raw telemetry topic: raw-telemetry
+[tetragon-bridge] Monitored namespaces: default
+```
+
+## Live eBPF Demo
+
+### 1. Create a test deployment
+
+```bash
+kubectl create deployment aura-ebpf-test \
+  --image=curlimages/curl \
+  -- sleep 3600
+```
+
+Wait for it:
+
+```bash
+kubectl get pods
+```
+
+### 2. Trigger a harmless exec event
+
+```bash
+kubectl exec -it deploy/aura-ebpf-test -- sh -c 'whoami && uname -a'
+```
+
+### 3. Verify the Tetragon bridge published the event
+
+```bash
+kubectl logs -n aura -l app=aura-tetragon-bridge --since=5m --tail=100
+```
+
+Expected log:
+
+```text
+[tetragon-bridge] Published unauthorizedPodExec to raw-telemetry: default/aura-ebpf-test-...
+```
+
+### 4. Verify the full Aura pipeline
+
+```bash
+kubectl logs -n aura deployment/aura-telemetry-normalizer --since=10m --tail=100
+kubectl logs -n aura deployment/aura-orchestrator --since=10m --tail=100
+kubectl logs -n aura deployment/aura-worker --since=10m --tail=100
+kubectl logs -n aura deployment/aura-approval-consumer --since=10m --tail=100
+```
+
+Expected flow:
+
+```text
+RAW_TELEMETRY_RECEIVED
+TELEMETRY_NORMALIZED_TO_THREAT
+THREAT_RECEIVED
+REMEDIATION_GENERATED
+REMEDIATION_COMMAND_RECEIVED
+REMEDIATION_AWAITING_APPROVAL
+```
+
+### 5. Approve from the dashboard
+
+Open:
+
+```text
+http://localhost:3000/streaming-monitor
+```
+
+Find the `awaiting_approval` result and click `Approve`.
+
+Then verify:
+
+```bash
+kubectl logs -n aura deployment/aura-approval-decisions --since=10m --tail=100
+kubectl logs -n aura deployment/aura-results-consumer --since=10m --tail=100
+```
+
+Expected final result:
+
+```text
+status: executed
+executionMode: simulate
+decision: approve
+```
+
+### 6. Clean up
+
+```bash
+kubectl delete deployment aura-ebpf-test
+```
+
+## Safe Lab Namespace for Security Training
+
+For classroom or family lab practice, use a dedicated namespace instead of testing in production namespaces.
+
+```bash
+kubectl create namespace aura-lab
+
+kubectl set env daemonset/aura-tetragon-bridge \
+  TETRAGON_MONITORED_NAMESPACES=aura-lab \
+  -n aura
+
+kubectl rollout restart daemonset/aura-tetragon-bridge -n aura
+kubectl rollout status daemonset/aura-tetragon-bridge -n aura
+```
+
+Create a lab target:
+
+```bash
+kubectl -n aura-lab create deployment attack-lab \
+  --image=curlimages/curl \
+  -- sleep 3600
+```
+
+Safe practice commands:
+
+```bash
+kubectl -n aura-lab exec -it deploy/attack-lab -- sh -c 'whoami && uname -a'
+kubectl -n aura-lab exec -it deploy/attack-lab -- sh -c 'cat /etc/passwd | head'
+kubectl -n aura-lab exec -it deploy/attack-lab -- sh -c 'printenv'
+kubectl -n aura-lab exec -it deploy/attack-lab -- sh -c 'curl -I https://example.com'
+```
+
+Clean up:
+
+```bash
+kubectl delete namespace aura-lab
+```
+
+Only run tests against infrastructure you own or have permission to use.
+
+## PQC Simulation Demo
+
+Aura also includes a post-quantum cryptography simulation path.
+
+Run the PQC telemetry job:
+
+```bash
+cd backend
+./scripts/run-pqc-telemetry-job.sh
+```
+
+The script prints the latest remediation ID, threat ID, and approval ID.
+
+Approve manually with:
+
+```bash
+./scripts/run-approval-job.sh <remediationId> <threatId> <approvalId>
+```
+
+## Manual eBPF Approval Fallback
+
+If the dashboard is not available, the eBPF approval script can approve a known remediation manually:
+
+```bash
+cd backend
+./scripts/run-ebpf-approval-job.sh <remediationId> <threatId> <approvalId> [targetResource]
+```
+
+Example:
+
+```bash
+./scripts/run-ebpf-approval-job.sh \
+  rem-123 \
+  threat-123 \
+  approval-123 \
+  default/aura-ebpf-test
+```
+
+## Safety Validation Tests
+
+### Bad command test
+
+The bad command producer intentionally sends a remediation with the wrong action for its issue type. The worker should reject it and send it to the DLQ.
+
+```bash
+cd backend
+node streaming/badCommandProducer.js
+```
+
+Watch the DLQ:
+
+```bash
+kubectl logs -n aura deployment/aura-dlq-consumer --since=10m --tail=100
+```
+
+### Apply mode rejection test
+
+The apply command producer intentionally sends `executionMode: apply`. The validator should reject it because Aura currently allows only simulated execution.
+
+```bash
+cd backend
+node streaming/applyCommandProducer.js
+```
+
+Expected behavior:
+
+```text
+Execution mode "apply" is not allowed. Only "simulate" is currently supported.
+```
+
+## API Endpoints
+
+### Alerts
+
+```text
+GET    /api/alerts
+POST   /api/alerts
+GET    /api/alerts/:id
+POST   /api/alerts/:id/generate-fix
+GET    /api/alerts/quantum-risk
+```
+
+### Remediations
+
+```text
+GET    /api/remediations/alert/:alertId
+PATCH  /api/remediations/:id/approve
+PATCH  /api/remediations/:id/reject
+PATCH  /api/remediations/:id/deploy
+```
+
+### Audit Logs
+
+```text
+GET    /api/audit-logs/alert/:alertId
+```
+
+### Webhooks
+
+```text
+POST   /api/webhooks/azure
+POST   /api/webhooks/aws
+POST   /api/webhooks/gcp
+```
+
+### Streaming Monitor
+
+```text
+GET    /api/streaming/status
+GET    /api/streaming/audit-summary
+GET    /api/streaming/execution-results
+POST   /api/streaming-approvals/decision
+POST   /api/streaming-approvals/approve
+POST   /api/streaming-approvals/reject
+```
+
+## Dashboard Pages
+
+```text
+/                    Security Alerts
+/alerts/:id          Alert details and remediation workflow
+/quantum-risk        Quantum risk report
+/webhook-events      Webhook event history
+/streaming-monitor   Live Kafka/eBPF streaming monitor
+```
+
+## Important Security Notes
+
+* Do not commit real `.env` files.
+* Do not commit Kafka credentials.
+* Do not commit OpenAI or Azure OpenAI keys.
+* Do not commit GitHub tokens.
+* Keep final execution in `simulate` mode unless a production-grade approval and rollback model is built.
+* Only run attack simulations against environments you own or have explicit permission to test.
+* Use a dedicated namespace such as `aura-lab` for training.
+* Avoid destructive commands in lab pods.
+
+## Demo Script
+
+A clear demo narrative:
+
+```text
+Aura is no longer only using simulated telemetry. I deployed Tetragon on AKS and connected it to Aura through a live eBPF bridge. When I exec into a real AKS pod, Tetragon captures the process_exec event. Aura converts that into an unauthorizedPodExec threat, generates a safe AI remediation plan, validates it, routes it to human approval, and publishes the final simulated execution result after approval from the dashboard.
+```
+
+## Current Milestone
+
+Completed:
+
+```text
+✅ Live eBPF monitoring on AKS
+✅ Tetragon installed and exporting process_exec events
+✅ Aura Tetragon bridge publishing to Kafka
+✅ Telemetry normalizer mapping eBPF events to unauthorizedPodExec
+✅ AI remediation generation
+✅ Worker validation and approval gate
+✅ Dashboard approval workflow
+✅ Final simulated execution result
+✅ Streaming Monitor visibility
+✅ Mongo alert persistence support
+✅ PQC simulation support
+✅ Multi-cloud webhook intake support
+```
+
+## Future Enhancements
+
+Potential next steps:
+
+* Add authentication and RBAC to the dashboard.
+* Add dedicated lab mode controls in the UI.
+* Add namespace allowlists and deny lists from the dashboard.
+* Persist approval queue items directly to MongoDB.
+* Add WebSocket or SSE live updates instead of polling.
+* Add richer Tetragon policy filters.
+* Add network_connect event classification.
+* Add runtime severity scoring based on process, namespace, user, and image.
+* Add GitHub PR generation for Kubernetes RBAC hardening recommendations.
+* Add Terraform plan previews for cloud posture remediations.
+* Add KEDA autoscaling based on Kafka queue depth.
+
+## License
+
+This project is for educational, portfolio, and security engineering demonstration purposes.
+
+## Author
+
+Wilson Galdamez
+
+GitHub: Willie-Byte
