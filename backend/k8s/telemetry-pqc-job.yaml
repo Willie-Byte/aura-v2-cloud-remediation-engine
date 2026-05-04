@@ -17,7 +17,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: aura-telemetry-pqc
-          image: aurav2registry17722.azurecr.io/aura-backend:v1
+          image: aurav2registry17722.azurecr.io/aura-backend:v2-ebpf
           imagePullPolicy: IfNotPresent
           command: ["node", "streaming/telemetryProducer.js", "pqc"]
           envFrom:
