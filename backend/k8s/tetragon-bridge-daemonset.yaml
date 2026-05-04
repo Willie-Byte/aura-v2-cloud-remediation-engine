@@ -25,7 +25,7 @@ spec:
             - name: TETRAGON_LOG_PATH
               value: "/var/run/cilium/tetragon/tetragon.log"
             - name: TETRAGON_MONITORED_NAMESPACES
-              value: "default,aura"
+              value: "default"
             - name: TETRAGON_READ_FROM_START
               value: "false"
           envFrom:
