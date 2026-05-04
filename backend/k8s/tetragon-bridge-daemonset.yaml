@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: aura-tetragon-bridge
-          image: aurav2registry17722.azurecr.io/aura-backend:v2-ebpf
+          image: aurav2registry17722.azurecr.io/aura-backend:v2-ebpf-amd64
           imagePullPolicy: IfNotPresent
           command: ["node", "streaming/tetragonBridge.js"]
           env:
