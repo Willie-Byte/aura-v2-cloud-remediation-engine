@@ -66,6 +66,57 @@ function StreamingMonitorPage() {
     return new Date(value).toLocaleString();
   };
 
+  const formatValue = (value) => {
+    if (value === undefined || value === null || value === "") return "N/A";
+    return String(value);
+  };
+
+  const getTelemetryEvidence = (telemetry = {}) => {
+    const evidence = telemetry.evidence || telemetry.metadata?.runtimeEvidence || {};
+
+    return {
+      namespace: evidence.namespace || telemetry.namespace,
+      podName: evidence.podName || telemetry.podName,
+      containerName: evidence.containerName || telemetry.containerName,
+      imageName: evidence.imageName || telemetry.imageName,
+      binary: evidence.binary || telemetry.binary,
+      arguments: evidence.arguments || telemetry.arguments,
+      nodeName: evidence.nodeName || telemetry.nodeName,
+    };
+  };
+
+  const isRuntimeTelemetry = (telemetry = {}) => {
+    return (
+      telemetry.source === "tetragon-ebpf" ||
+      telemetry.issueType === "unauthorizedPodExec" ||
+      telemetry.eventType === "process_exec"
+    );
+  };
+
+  const getThreatEvidence = (threat = {}) => {
+    return threat.evidence || getTelemetryEvidence(threat.rawTelemetry || {});
+  };
+
+  const getFallbackActionForIssueType = (issueType) => {
+    if (issueType === "unauthorizedPodExec") {
+      return "investigateUnauthorizedPodExec";
+    }
+
+    if (issueType === "nonQuantumSafeCrypto") {
+      return "enforcePQCTls1_3";
+    }
+
+    if (issueType === "publicStorageAccess") {
+      return "disablePublicAccess";
+    }
+
+    if (issueType === "publicRDPAccess") {
+      return "restrictRDPAccess";
+    }
+
+    return "restrictSSHAccess";
+  };
+
   const getApprovalEventForResult = (result) => {
     return auditData.events.find(
       (event) =>
@@ -96,7 +147,10 @@ function StreamingMonitorPage() {
         resourceType: result.resourceType,
         cloudProvider: result.cloudProvider,
         issueType: result.issueType,
-        action: result.remediationPlan?.action || "restrictSSHAccess",
+        action:
+          result.action ||
+          result.remediationPlan?.action ||
+          getFallbackActionForIssueType(result.issueType),
         riskLevel: result.remediationPlan?.riskLevel || "high",
         decidedBy: "dashboard-reviewer",
         reason:
@@ -216,19 +270,43 @@ function StreamingMonitorPage() {
     if (!event) return "No details available.";
 
     switch (event.eventType) {
-      case "RAW_TELEMETRY_RECEIVED":
-        return `Raw telemetry received from ${
-          event.payload?.telemetry?.source || "unknown source"
-        } for ${
-          event.payload?.telemetry?.resourceName || "unknown resource"
-        }.`;
+      case "RAW_TELEMETRY_RECEIVED": {
+        const telemetry = event.payload?.telemetry || {};
+        const evidence = getTelemetryEvidence(telemetry);
 
-      case "TELEMETRY_NORMALIZED_TO_THREAT":
+        if (isRuntimeTelemetry(telemetry)) {
+          return `Live eBPF telemetry received from ${
+            telemetry.source || "unknown source"
+          } for ${telemetry.resourceName || "unknown resource"}. Command: ${
+            evidence.binary || "unknown binary"
+          } ${evidence.arguments || ""}`;
+        }
+
+        return `Raw telemetry received from ${
+          telemetry.source || "unknown source"
+        } for ${telemetry.resourceName || "unknown resource"}.`;
+      }
+
+      case "TELEMETRY_NORMALIZED_TO_THREAT": {
+        const threat = event.payload?.threat || {};
+        const evidence = getThreatEvidence(threat);
+
+        if (threat.issueType === "unauthorizedPodExec") {
+          return `Live eBPF telemetry ${
+            event.payload?.sourceTelemetryId || "unknown telemetry"
+          } was normalized into runtime threat ${threat.id || "unknown threat"} for ${
+            threat.resourceName || "unknown resource"
+          }. Command: ${evidence.binary || "unknown binary"} ${
+            evidence.arguments || ""
+          }`;
+        }
+
         return `Telemetry ${
           event.payload?.sourceTelemetryId || "unknown telemetry"
         } was normalized into threat ${
-          event.payload?.threat?.id || "unknown threat"
-        } for ${event.payload?.threat?.resourceName || "unknown resource"}.`;
+          threat.id || "unknown threat"
+        } for ${threat.resourceName || "unknown resource"}.`;
+      }
 
       case "THREAT_RECEIVED":
         return `Threat received for ${
@@ -349,11 +427,21 @@ function StreamingMonitorPage() {
     (event) => event.eventType === "RAW_TELEMETRY_RECEIVED"
   );
 
+  const runtimeTelemetryCount = auditData.events.filter(
+    (event) =>
+      event.eventType === "RAW_TELEMETRY_RECEIVED" &&
+      isRuntimeTelemetry(event.payload?.telemetry || {})
+  ).length;
+
   const latestTelemetryResource =
     latestTelemetryEvent?.payload?.telemetry?.resourceName || "No telemetry";
 
   const latestTelemetrySource =
     latestTelemetryEvent?.payload?.telemetry?.source || "N/A";
+
+  const latestTelemetryEvidence = getTelemetryEvidence(
+    latestTelemetryEvent?.payload?.telemetry || {}
+  );
 
   if (loading) {
     return (
@@ -453,6 +541,17 @@ function StreamingMonitorPage() {
           </div>
           <p className="timestamp-text">
             Latest: {latestTelemetryResource} from {latestTelemetrySource}
+          </p>
+        </div>
+
+        <div className="summary-card">
+          <p className="summary-label">Live eBPF Runtime</p>
+          <h3>{runtimeTelemetryCount}</h3>
+          <div className="meta-row">
+            <span className="status-badge status-open">pod exec</span>
+          </div>
+          <p className="timestamp-text">
+            Latest command: {formatValue(latestTelemetryEvidence.binary)} {formatValue(latestTelemetryEvidence.arguments)}
           </p>
         </div>
 
@@ -897,38 +996,88 @@ function StreamingMonitorPage() {
                     Raw Telemetry Details
                   </h3>
 
-                  <p>
-                    <strong>Telemetry ID:</strong>{" "}
-                    {event.payload?.telemetry?.telemetryId || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Source:</strong>{" "}
-                    {event.payload?.telemetry?.source || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Event Type:</strong>{" "}
-                    {event.payload?.telemetry?.eventType || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Resource:</strong>{" "}
-                    {event.payload?.telemetry?.resourceName || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Observed Port:</strong>{" "}
-                    {event.payload?.telemetry?.observedPort || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Exposure:</strong>{" "}
-                    {event.payload?.telemetry?.exposure || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Source IP Range:</strong>{" "}
-                    {event.payload?.telemetry?.sourceIpRange || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Confidence:</strong>{" "}
-                    {event.payload?.telemetry?.metadata?.confidence ?? "N/A"}
-                  </p>
+                  {(() => {
+                    const telemetry = event.payload?.telemetry || {};
+                    const runtimeEvidence = getTelemetryEvidence(telemetry);
+                    const runtimeEvent = isRuntimeTelemetry(telemetry);
+
+                    return (
+                      <>
+                        <p>
+                          <strong>Telemetry ID:</strong>{" "}
+                          {telemetry.telemetryId || telemetry.id || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Source:</strong> {telemetry.source || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Event Type:</strong>{" "}
+                          {telemetry.eventType || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Resource:</strong>{" "}
+                          {telemetry.resourceName || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Issue Type:</strong>{" "}
+                          {telemetry.issueType || "N/A"}
+                        </p>
+
+                        {runtimeEvent ? (
+                          <>
+                            <p>
+                              <strong>Namespace:</strong>{" "}
+                              {formatValue(runtimeEvidence.namespace)}
+                            </p>
+                            <p>
+                              <strong>Pod:</strong>{" "}
+                              {formatValue(runtimeEvidence.podName)}
+                            </p>
+                            <p>
+                              <strong>Container:</strong>{" "}
+                              {formatValue(runtimeEvidence.containerName)}
+                            </p>
+                            <p>
+                              <strong>Image:</strong>{" "}
+                              {formatValue(runtimeEvidence.imageName)}
+                            </p>
+                            <p>
+                              <strong>Binary:</strong>{" "}
+                              {formatValue(runtimeEvidence.binary)}
+                            </p>
+                            <p>
+                              <strong>Arguments:</strong>{" "}
+                              {formatValue(runtimeEvidence.arguments)}
+                            </p>
+                            <p>
+                              <strong>Node:</strong>{" "}
+                              {formatValue(runtimeEvidence.nodeName)}
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p>
+                              <strong>Observed Port:</strong>{" "}
+                              {telemetry.observedPort || "N/A"}
+                            </p>
+                            <p>
+                              <strong>Exposure:</strong>{" "}
+                              {telemetry.exposure || "N/A"}
+                            </p>
+                            <p>
+                              <strong>Source IP Range:</strong>{" "}
+                              {telemetry.sourceIpRange || "N/A"}
+                            </p>
+                          </>
+                        )}
+
+                        <p>
+                          <strong>Confidence:</strong>{" "}
+                          {telemetry.metadata?.confidence ?? "N/A"}
+                        </p>
+                      </>
+                    );
+                  })()}
                 </div>
               )}
 
@@ -971,6 +1120,31 @@ function StreamingMonitorPage() {
                     <strong>Description:</strong>{" "}
                     {event.payload?.threat?.description || "N/A"}
                   </p>
+
+                  {event.payload?.threat?.issueType === "unauthorizedPodExec" &&
+                    (() => {
+                      const runtimeEvidence = getThreatEvidence(
+                        event.payload?.threat || {}
+                      );
+
+                      return (
+                        <div className="card" style={{ marginTop: "14px" }}>
+                          <h3
+                            className="section-title"
+                            style={{ marginTop: 0, fontSize: "18px" }}
+                          >
+                            eBPF Evidence
+                          </h3>
+                          <p><strong>Namespace:</strong> {formatValue(runtimeEvidence.namespace)}</p>
+                          <p><strong>Pod:</strong> {formatValue(runtimeEvidence.podName)}</p>
+                          <p><strong>Container:</strong> {formatValue(runtimeEvidence.containerName)}</p>
+                          <p><strong>Image:</strong> {formatValue(runtimeEvidence.imageName)}</p>
+                          <p><strong>Binary:</strong> {formatValue(runtimeEvidence.binary)}</p>
+                          <p><strong>Arguments:</strong> {formatValue(runtimeEvidence.arguments)}</p>
+                          <p><strong>Node:</strong> {formatValue(runtimeEvidence.nodeName)}</p>
+                        </div>
+                      );
+                    })()}
                 </div>
               )}
 

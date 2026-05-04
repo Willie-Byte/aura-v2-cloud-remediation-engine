@@ -30,20 +30,43 @@ function CreateAlertForm({ onAlertCreated }) {
         if (value === "publicStorageAccess") {
           updated.resourceType = "storageAccount";
           updated.description = "Storage account allows public blob access";
+          updated.severity = "high";
+          updated.source = "simulator";
         } else if (value === "publicSSHAccess") {
           updated.resourceType = "networkSecurityGroup";
           updated.description =
             "Network security group allows public SSH access on port 22";
+          updated.severity = "high";
+          updated.source = "simulator";
         } else if (value === "publicRDPAccess") {
           updated.resourceType = "networkSecurityGroup";
           updated.description =
             "Network security group allows public RDP access on port 3389";
+          updated.severity = "high";
+          updated.source = "simulator";
         } else if (value === "unencryptedDatabase") {
           updated.resourceType = "sqlDatabase";
           updated.description = "Database encryption is not enabled";
+          updated.severity = "critical";
+          updated.source = "simulator";
         } else if (value === "weakTlsVersion") {
           updated.resourceType = "appService";
           updated.description = "Service allows weak TLS versions below 1.2";
+          updated.severity = "medium";
+          updated.source = "simulator";
+        } else if (value === "nonQuantumSafeCrypto") {
+          updated.resourceType = "appService";
+          updated.description =
+            "Azure resource uses non-quantum-safe cryptography. Enforce TLS 1.3 with Kyber/ML-KEM hybrid key exchange.";
+          updated.severity = "critical";
+          updated.source = "simulator";
+        } else if (value === "unauthorizedPodExec") {
+          updated.source = "tetragon-ebpf";
+          updated.cloudProvider = "azure";
+          updated.resourceType = "aksPod";
+          updated.severity = "high";
+          updated.description =
+            "Live eBPF detected suspicious process execution inside an AKS pod.";
         }
       }
 
@@ -162,6 +185,8 @@ function CreateAlertForm({ onAlertCreated }) {
             <option value="publicRDPAccess">publicRDPAccess</option>
             <option value="unencryptedDatabase">unencryptedDatabase</option>
             <option value="weakTlsVersion">weakTlsVersion</option>
+            <option value="nonQuantumSafeCrypto">nonQuantumSafeCrypto</option>
+            <option value="unauthorizedPodExec">unauthorizedPodExec</option>
           </select>
         </div>
 

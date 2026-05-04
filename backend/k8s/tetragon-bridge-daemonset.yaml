@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: aura-tetragon-bridge
+  namespace: aura
+  labels:
+    app: aura-tetragon-bridge
+    component: tetragon-bridge
+spec:
+  selector:
+    matchLabels:
+      app: aura-tetragon-bridge
+  template:
+    metadata:
+      labels:
+        app: aura-tetragon-bridge
+        component: tetragon-bridge
+    spec:
+      containers:
+        - name: aura-tetragon-bridge
+          image: aurav2registry17722.azurecr.io/aura-backend:v2-ebpf
+          imagePullPolicy: IfNotPresent
+          command: ["node", "streaming/tetragonBridge.js"]
+          env:
+            - name: TETRAGON_LOG_PATH
+              value: "/var/run/cilium/tetragon/tetragon.log"
+            - name: TETRAGON_MONITORED_NAMESPACES
+              value: "default,aura"
+            - name: TETRAGON_READ_FROM_START
+              value: "false"
+          envFrom:
+            - configMapRef:
+                name: aura-config
+            - secretRef:
+                name: aura-secrets
+          volumeMounts:
+            - name: tetragon-log
+              mountPath: /var/run/cilium/tetragon
+              readOnly: true
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+      volumes:
+        - name: tetragon-log
+          hostPath:
+            path: /var/run/cilium/tetragon
+            type: DirectoryOrCreate

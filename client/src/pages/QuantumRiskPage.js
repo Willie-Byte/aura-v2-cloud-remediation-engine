@@ -8,12 +8,15 @@ function QuantumRiskPage() {
     score: 0,
     riskLabel: "Low",
     totalQuantumSensitiveFindings: 0,
+    totalRuntimeSecurityFindings: 0,
     issueCounts: {
+      nonQuantumSafeCrypto: 0,
       unencryptedDatabase: 0,
       weakTlsVersion: 0,
       publicStorageAccess: 0,
       publicSSHAccess: 0,
       publicRDPAccess: 0,
+      unauthorizedPodExec: 0,
     },
     trackedAlerts: 0,
     topRecommendation: "Maintain current monitoring posture.",
@@ -127,6 +130,11 @@ function QuantumRiskPage() {
         </div>
 
         <div className="summary-card">
+          <p className="summary-label">Runtime Security Findings</p>
+          <h3>{quantumData.totalRuntimeSecurityFindings || 0}</h3>
+        </div>
+
+        <div className="summary-card">
           <p className="summary-label">Tracked Alerts</p>
           <h3>{quantumData.trackedAlerts}</h3>
         </div>
@@ -179,6 +187,24 @@ function QuantumRiskPage() {
 
       <div className="summary-grid">
         <div className="summary-card">
+          <p className="summary-label">Non-Quantum-Safe Crypto</p>
+          <h3>{quantumData.issueCounts.nonQuantumSafeCrypto || 0}</h3>
+          <p className="timestamp-text">PQC readiness gap</p>
+          <p className="timestamp-text" style={{ marginTop: "10px" }}>
+            Recommended Action: Enforce TLS 1.3 with ML-KEM/Kyber hybrid key exchange where supported.
+          </p>
+        </div>
+
+        <div className="summary-card">
+          <p className="summary-label">Live Pod Exec</p>
+          <h3>{quantumData.issueCounts.unauthorizedPodExec || 0}</h3>
+          <p className="timestamp-text">Runtime access anomaly</p>
+          <p className="timestamp-text" style={{ marginTop: "10px" }}>
+            Recommended Action: Investigate the pod exec event and review AKS RBAC/access controls.
+          </p>
+        </div>
+
+        <div className="summary-card">
           <p className="summary-label">Unencrypted Database</p>
           <h3>{quantumData.issueCounts.unencryptedDatabase}</h3>
           <p className="timestamp-text">Highest long-term data sensitivity</p>
@@ -224,6 +250,14 @@ function QuantumRiskPage() {
         </h2>
 
         <p>
+          <strong>Non-Quantum-Safe Crypto:</strong>{" "}
+          {quantumData.issueCounts.nonQuantumSafeCrypto || 0}
+        </p>
+        <p>
+          <strong>Unauthorized Pod Exec:</strong>{" "}
+          {quantumData.issueCounts.unauthorizedPodExec || 0}
+        </p>
+        <p>
           <strong>Unencrypted Database:</strong>{" "}
           {quantumData.issueCounts.unencryptedDatabase}
         </p>
@@ -259,8 +293,12 @@ function QuantumRiskPage() {
           quantum-readiness and crypto-agility.
         </p>
         <p>
-          <strong>3.</strong> Prepare future Aura enhancements for PQC audits, hybrid key strategy
-          recommendations, and quantum-specific governance reporting.
+          <strong>3.</strong> Investigate live eBPF runtime findings by validating pod exec activity,
+          reviewing namespace access, and tightening AKS RBAC where needed.
+        </p>
+        <p>
+          <strong>4.</strong> Prepare future Aura enhancements for PQC audits, hybrid key strategy
+          recommendations, runtime evidence review, and governance reporting.
         </p>
       </div>
     </div>

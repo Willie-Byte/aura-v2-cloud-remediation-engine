@@ -88,6 +88,24 @@ const remediationPolicy = {
       "Ensure public-facing services reject weak TLS versions and use modern secure transport settings.",
   },
 
+
+  unauthorizedPodExec: {
+    expectedAction: "investigateUnauthorizedPodExec",
+    allowedResourceTypes: [
+      "aksPod",
+      "kubernetesPod",
+      "container",
+    ],
+    riskLevel: "high",
+    severityScore: 40,
+    requiresApproval: true,
+    category: "runtime_security",
+    description:
+      "Investigate suspicious process execution inside an AKS pod detected by live eBPF telemetry. Validate whether the exec activity was authorized, inspect the workload, review Kubernetes RBAC, and recommend least-privilege restrictions before enforcement.",
+    remediationGoal:
+      "Create a safe, human-reviewed runtime security response for suspicious pod exec activity without automatically disrupting production workloads.",
+  },
+
   nonQuantumSafeCrypto: {
     expectedAction: "enforcePQCTls1_3",
     allowedResourceTypes: [

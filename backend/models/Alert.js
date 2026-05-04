@@ -73,6 +73,37 @@ const alertSchema = new mongoose.Schema(
       },
     },
 
+    sourceTelemetryId: {
+      type: String,
+      default: "",
+      index: true,
+    },
+
+    evidence: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+
+    rawTelemetry: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+
+    streamingMetadata: {
+      normalizedThreatId: {
+        type: String,
+        default: "",
+      },
+      ingestionPath: {
+        type: String,
+        default: "api",
+      },
+      kafkaAuditEventId: {
+        type: String,
+        default: "",
+      },
+    },
+
     detectedAt: {
       type: Date,
       default: Date.now,
@@ -80,6 +111,14 @@ const alertSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+  }
+);
+
+alertSchema.index(
+  { sourceTelemetryId: 1 },
+  {
+    sparse: true,
+    partialFilterExpression: { sourceTelemetryId: { $type: "string", $gt: "" } },
   }
 );
 

@@ -10,6 +10,21 @@ const producer = kafka.producer();
 
 function mapTelemetryToIssueType(telemetry) {
   if (
+    telemetry.issueType === "unauthorizedPodExec" ||
+    (
+      telemetry.source === "tetragon-ebpf" &&
+      telemetry.eventType === "process_exec" &&
+      telemetry.resourceType === "aksPod"
+    ) ||
+    (
+      telemetry.source === "tetragon-ebpf" &&
+      telemetry.eventType === "unauthorized_pod_exec_detected"
+    )
+  ) {
+    return "unauthorizedPodExec";
+  }
+
+  if (
     telemetry.eventType === "network_exposure_detected" &&
     telemetry.resourceType === "networkSecurityGroup" &&
     telemetry.observedPort === 22 &&
@@ -72,6 +87,12 @@ function mapTelemetryToIssueType(telemetry) {
 
 function getThreatDescription(issueType, telemetry) {
   const descriptionMap = {
+    unauthorizedPodExec:
+      `Live eBPF detected suspicious process execution inside AKS pod ${
+        telemetry.resourceName || "unknown-pod"
+      }. Binary: ${telemetry.binary || "unknown"}, arguments: ${
+        telemetry.arguments || "none"
+      }.`,
     publicSSHAccess:
       "Network security group allows public SSH access on port 22.",
     publicRDPAccess:
@@ -100,15 +121,25 @@ function buildThreatFromTelemetry(telemetry) {
   return {
     id: `threat-${Date.now()}`,
     source: telemetry.source || "unknown-telemetry-source",
-    sourceTelemetryId: telemetry.telemetryId,
-    cloudProvider: telemetry.cloudProvider,
+    sourceTelemetryId: telemetry.telemetryId || telemetry.id,
+    cloudProvider: telemetry.cloudProvider || "azure",
     resourceType: telemetry.resourceType,
     resourceName: telemetry.resourceName,
     severity: telemetry.severity || "medium",
     issueType,
-    description: getThreatDescription(issueType, telemetry),
+    description: telemetry.description || getThreatDescription(issueType, telemetry),
     status: "open",
-    timestamp: new Date().toISOString(),
+    timestamp: telemetry.detectedAt || telemetry.timestamp || new Date().toISOString(),
+    evidence: {
+      namespace: telemetry.namespace,
+      podName: telemetry.podName,
+      containerName: telemetry.containerName,
+      imageName: telemetry.imageName,
+      binary: telemetry.binary,
+      arguments: telemetry.arguments,
+      nodeName: telemetry.nodeName,
+      eventType: telemetry.eventType,
+    },
     rawTelemetry: telemetry,
   };
 }
@@ -182,7 +213,7 @@ async function runTelemetryNormalizer() {
         console.log(threat);
 
         await publishAuditEvent("TELEMETRY_NORMALIZED_TO_THREAT", {
-          sourceTelemetryId: telemetry.telemetryId,
+          sourceTelemetryId: telemetry.telemetryId || telemetry.id,
           threat,
         });
       },

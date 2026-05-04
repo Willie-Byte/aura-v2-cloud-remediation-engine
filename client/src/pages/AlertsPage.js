@@ -122,6 +122,12 @@ function AlertsPage() {
           color: "#fbbf24",
           border: "1px solid rgba(245, 158, 11, 0.35)",
         };
+      case "gcp":
+        return {
+          background: "rgba(34, 197, 94, 0.16)",
+          color: "#86efac",
+          border: "1px solid rgba(34, 197, 94, 0.35)",
+        };
       default:
         return {
           background: "rgba(148, 163, 184, 0.16)",
@@ -168,7 +174,13 @@ function AlertsPage() {
   const approvedAlerts = alerts.filter((alert) => alert.status === "approved").length;
   const rejectedAlerts = alerts.filter((alert) => alert.status === "rejected").length;
   const webhookEventsCount = alerts.filter((alert) =>
-    ["azure-event-grid", "aws-eventbridge"].includes(alert.source)
+    ["azure-event-grid", "aws-eventbridge", "gcp-eventarc"].includes(alert.source)
+  ).length;
+
+  const liveRuntimeEventsCount = alerts.filter(
+    (alert) =>
+      alert.source === "tetragon-ebpf" ||
+      alert.issueType === "unauthorizedPodExec"
   ).length;
 
   const filteredAlerts = useMemo(() => {
@@ -184,7 +196,8 @@ function AlertsPage() {
         (alert) =>
           alert.resourceName.toLowerCase().includes(term) ||
           alert.issueType.toLowerCase().includes(term) ||
-          alert.cloudProvider.toLowerCase().includes(term)
+          alert.cloudProvider.toLowerCase().includes(term) ||
+          (alert.source || "").toLowerCase().includes(term)
       );
     }
 
@@ -264,6 +277,32 @@ function AlertsPage() {
             }}
           >
             Open Event History →
+          </p>
+        </div>
+
+        <div
+          className="summary-card clickable-card"
+          onClick={() => navigate("/streaming-monitor")}
+          role="button"
+          tabIndex={0}
+          style={{ cursor: "pointer" }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              navigate("/streaming-monitor");
+            }
+          }}
+        >
+          <p className="summary-label">Live Runtime Events</p>
+          <h3>{liveRuntimeEventsCount}</h3>
+          <p className="timestamp-text">Tetragon / eBPF pod activity</p>
+          <p
+            style={{
+              marginTop: "12px",
+              color: "#60a5fa",
+              fontWeight: "600",
+            }}
+          >
+            Open Streaming Monitor →
           </p>
         </div>
 
@@ -395,6 +434,9 @@ function AlertsPage() {
 
               <p>
                 <strong>Cloud:</strong> {alert.cloudProvider}
+              </p>
+              <p>
+                <strong>Source:</strong> {alert.source || "N/A"}
               </p>
               <p>
                 <strong>Resource Type:</strong> {alert.resourceType}

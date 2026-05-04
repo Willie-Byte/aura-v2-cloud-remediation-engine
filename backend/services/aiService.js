@@ -60,6 +60,7 @@ Security rules:
 - Do not open public network access
 - Use secure defaults
 - Keep the remediation focused on the alert issue type
+- If the issue type is unauthorizedPodExec, reject or correct any remediation that performs destructive runtime actions, execs into pods, kills workloads, or weakens RBAC.
 `;
 
   const response = await client.chat.completions.create({
@@ -129,6 +130,7 @@ Rules:
 - Do not disable logging
 - Do not weaken encryption
 - Do not open public network access
+- If the issue type is unauthorizedPodExec, focus on safe Kubernetes/AKS hardening such as least-privilege RBAC, namespace-scoped permissions, audit visibility, and workload isolation. Do not generate commands that exec into pods or kill workloads.
 `;
 
   const response = await client.chat.completions.create({

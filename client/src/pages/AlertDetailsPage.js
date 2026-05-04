@@ -260,6 +260,20 @@ function AlertDetailsPage() {
   const latestRemediation = remediations.length > 0 ? remediations[0] : null;
   const latestAuditLog = auditLogs.length > 0 ? auditLogs[0] : null;
 
+  const evidence = alert?.evidence || {};
+  const hasRuntimeEvidence = Boolean(
+    alert?.issueType === "unauthorizedPodExec" ||
+      alert?.source === "tetragon-ebpf" ||
+      evidence.namespace ||
+      evidence.podName ||
+      evidence.binary
+  );
+
+  const formatEvidenceValue = (value) => {
+    if (value === undefined || value === null || value === "") return "N/A";
+    return String(value);
+  };
+
   const handleExportSummary = () => {
     if (!alert) return;
 
@@ -274,6 +288,14 @@ Issue Type: ${alert.issueType}
 Severity: ${alert.severity}
 Alert Status: ${alert.status}
 Description: ${alert.description}
+Source Telemetry ID: ${alert.sourceTelemetryId || "N/A"}
+Namespace: ${formatEvidenceValue(alert.evidence?.namespace)}
+Pod: ${formatEvidenceValue(alert.evidence?.podName)}
+Container: ${formatEvidenceValue(alert.evidence?.containerName)}
+Image: ${formatEvidenceValue(alert.evidence?.imageName)}
+Binary: ${formatEvidenceValue(alert.evidence?.binary)}
+Arguments: ${formatEvidenceValue(alert.evidence?.arguments)}
+Node: ${formatEvidenceValue(alert.evidence?.nodeName)}
 
 Created: ${formatDate(alert.createdAt)}
 Updated: ${formatDate(alert.updatedAt)}
@@ -409,9 +431,27 @@ ${auditLogs
         </div>
 
         <p><strong>Cloud:</strong> {alert.cloudProvider}</p>
+        <p><strong>Source:</strong> {alert.source || "N/A"}</p>
         <p><strong>Resource Type:</strong> {alert.resourceType}</p>
         <p><strong>Issue Type:</strong> {alert.issueType}</p>
         <p><strong>Description:</strong> {alert.description}</p>
+
+        {hasRuntimeEvidence && (
+          <div className="card" style={{ marginTop: "16px" }}>
+            <h2 className="section-title" style={{ marginTop: 0, fontSize: "18px" }}>
+              Live eBPF Runtime Evidence
+            </h2>
+            <p><strong>Source Telemetry ID:</strong> {alert.sourceTelemetryId || "N/A"}</p>
+            <p><strong>Namespace:</strong> {formatEvidenceValue(evidence.namespace)}</p>
+            <p><strong>Pod:</strong> {formatEvidenceValue(evidence.podName)}</p>
+            <p><strong>Container:</strong> {formatEvidenceValue(evidence.containerName)}</p>
+            <p><strong>Image:</strong> {formatEvidenceValue(evidence.imageName)}</p>
+            <p><strong>Binary:</strong> {formatEvidenceValue(evidence.binary)}</p>
+            <p><strong>Arguments:</strong> {formatEvidenceValue(evidence.arguments)}</p>
+            <p><strong>Node:</strong> {formatEvidenceValue(evidence.nodeName)}</p>
+            <p><strong>Ingestion Path:</strong> {alert.streamingMetadata?.ingestionPath || "N/A"}</p>
+          </div>
+        )}
 
         <div className="button-row">
           <button

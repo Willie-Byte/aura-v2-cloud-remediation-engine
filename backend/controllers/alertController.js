@@ -17,6 +17,10 @@ const createAlert = async (req, res) => {
       issueType,
       description,
       status,
+      sourceTelemetryId,
+      evidence,
+      rawTelemetry,
+      streamingMetadata,
     } = req.body;
 
     const alert = new Alert({
@@ -28,6 +32,10 @@ const createAlert = async (req, res) => {
       issueType,
       description,
       status,
+      sourceTelemetryId,
+      evidence,
+      rawTelemetry,
+      streamingMetadata,
     });
 
     const savedAlert = await alert.save();
@@ -70,6 +78,7 @@ const getQuantumRisk = async (req, res) => {
       publicStorageAccess: 20,
       publicSSHAccess: 10,
       publicRDPAccess: 10,
+      unauthorizedPodExec: 40,
     };
 
     const issueCounts = {
@@ -79,6 +88,7 @@ const getQuantumRisk = async (req, res) => {
       publicStorageAccess: 0,
       publicSSHAccess: 0,
       publicRDPAccess: 0,
+      unauthorizedPodExec: 0,
     };
 
     let totalScore = 0;
@@ -107,9 +117,14 @@ const getQuantumRisk = async (req, res) => {
       issueCounts.weakTlsVersion +
       issueCounts.publicStorageAccess;
 
+    const totalRuntimeSecurityFindings = issueCounts.unauthorizedPodExec;
+
     let topRecommendation = "Maintain current monitoring posture.";
 
-    if (issueCounts.nonQuantumSafeCrypto > 0) {
+    if (issueCounts.unauthorizedPodExec > 0) {
+      topRecommendation =
+        "Investigate live eBPF pod exec activity, validate whether the command was authorized, and review AKS RBAC and workload access controls.";
+    } else if (issueCounts.nonQuantumSafeCrypto > 0) {
       topRecommendation =
         "Prioritize post-quantum cryptography readiness by enforcing TLS 1.3 with Kyber/ML-KEM hybrid key exchange where supported.";
     } else if (issueCounts.unencryptedDatabase > 0) {
@@ -127,6 +142,7 @@ const getQuantumRisk = async (req, res) => {
       score,
       riskLabel,
       totalQuantumSensitiveFindings,
+      totalRuntimeSecurityFindings,
       issueCounts,
       trackedAlerts: alerts.length,
       topRecommendation,

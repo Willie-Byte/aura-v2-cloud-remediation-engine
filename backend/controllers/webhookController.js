@@ -33,6 +33,12 @@ const azureIssueTypeMap = {
       "Azure resource uses non-quantum-safe cryptography. Enforce TLS 1.3 with Kyber/ML-KEM hybrid key exchange.",
     severity: "critical",
   },
+  unauthorizedPodExec: {
+    resourceType: "aksPod",
+    description:
+      "Live eBPF monitoring detected suspicious process execution inside an AKS pod.",
+    severity: "high",
+  },
 };
 
 const awsIssueTypeMap = {
@@ -67,6 +73,12 @@ const awsIssueTypeMap = {
       "AWS resource uses non-quantum-safe cryptography. Enforce TLS 1.3 with Kyber/ML-KEM hybrid key exchange where supported.",
     severity: "critical",
   },
+  unauthorizedPodExec: {
+    resourceType: "eksPod",
+    description:
+      "Runtime monitoring detected suspicious process execution inside an EKS pod.",
+    severity: "high",
+  },
 };
 
 const gcpIssueTypeMap = {
@@ -100,6 +112,12 @@ const gcpIssueTypeMap = {
     description:
       "GCP resource uses non-quantum-safe cryptography. Enforce TLS 1.3 with Kyber/ML-KEM hybrid key exchange where supported.",
     severity: "critical",
+  },
+  unauthorizedPodExec: {
+    resourceType: "gkePod",
+    description:
+      "Runtime monitoring detected suspicious process execution inside a GKE pod.",
+    severity: "high",
   },
 };
 
@@ -218,6 +236,22 @@ const buildCryptoDescription = (payload, fallbackDescription) => {
   return fallbackDescription;
 };
 
+const buildRuntimeDescription = (payload, fallbackDescription) => {
+  const issueType =
+    payload.issueType || payload.detail?.issueType || payload.metadata?.issueType;
+
+  if (issueType !== "unauthorizedPodExec") {
+    return fallbackDescription;
+  }
+
+  const namespace = payload.namespace || "unknown-namespace";
+  const podName = payload.podName || payload.resourceName || "unknown-pod";
+  const binary = payload.binary || "unknown-binary";
+  const args = payload.arguments || "";
+
+  return `Live eBPF monitoring detected suspicious process execution in pod ${namespace}/${podName}: ${binary} ${args}`.trim();
+};
+
 const normalizeProviderPayload = (payload, defaultSource, defaultCloudProvider) => {
   return {
     source: payload.source || defaultSource,
@@ -250,6 +284,30 @@ const normalizeProviderPayload = (payload, defaultSource, defaultCloudProvider) 
 
     metadata: payload.metadata || payload.detail?.metadata,
     rawMessage: payload.rawMessage || payload.detail?.rawMessage,
+
+    sourceTelemetryId:
+      payload.sourceTelemetryId ||
+      payload.telemetryId ||
+      payload.detail?.sourceTelemetryId ||
+      payload.detail?.telemetryId,
+    namespace:
+      payload.namespace || payload.detail?.namespace || payload.metadata?.namespace,
+    podName:
+      payload.podName || payload.detail?.podName || payload.metadata?.podName,
+    containerName:
+      payload.containerName ||
+      payload.detail?.containerName ||
+      payload.metadata?.containerName,
+    imageName:
+      payload.imageName || payload.detail?.imageName || payload.metadata?.imageName,
+    binary: payload.binary || payload.detail?.binary || payload.metadata?.binary,
+    arguments:
+      payload.arguments || payload.detail?.arguments || payload.metadata?.arguments,
+    nodeName:
+      payload.nodeName || payload.detail?.nodeName || payload.metadata?.nodeName,
+    evidence: payload.evidence || payload.detail?.evidence || payload.metadata?.evidence,
+    rawTelemetry: payload.rawTelemetry || payload.detail?.rawTelemetry,
+
     detail: payload.detail,
     resources: payload.resources,
   };
@@ -281,12 +339,25 @@ const createWebhookAlert = async ({
     const resourceName =
       normalizedPayload.resourceName || "unknown-resource";
 
-    const description = buildCryptoDescription(
-      normalizedPayload,
+    const fallbackDescription =
       normalizedPayload.description ||
-        normalizedPayload.rawMessage ||
-        mappedIssue.description
+      normalizedPayload.rawMessage ||
+      mappedIssue.description;
+
+    const description = buildRuntimeDescription(
+      normalizedPayload,
+      buildCryptoDescription(normalizedPayload, fallbackDescription)
     );
+
+    const evidence = normalizedPayload.evidence || {
+      namespace: normalizedPayload.namespace,
+      podName: normalizedPayload.podName,
+      containerName: normalizedPayload.containerName,
+      imageName: normalizedPayload.imageName,
+      binary: normalizedPayload.binary,
+      arguments: normalizedPayload.arguments,
+      nodeName: normalizedPayload.nodeName,
+    };
 
     const alert = new Alert({
       source: normalizedPayload.source || defaultSource,
@@ -298,6 +369,13 @@ const createWebhookAlert = async ({
       description,
       status: normalizedPayload.status || "open",
       cryptoMetadata,
+      sourceTelemetryId: normalizedPayload.sourceTelemetryId || "",
+      evidence,
+      rawTelemetry: normalizedPayload.rawTelemetry || normalizedPayload,
+      streamingMetadata: {
+        normalizedThreatId: normalizedPayload.threatId || "",
+        ingestionPath: "webhook",
+      },
     });
 
     const savedAlert = await alert.save();

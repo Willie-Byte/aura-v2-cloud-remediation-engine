@@ -49,6 +49,10 @@ function buildGeneratedCode({
     return `Enable encryption at rest on ${cloudProvider} ${resourceType} ${targetResource}. Use managed keys or approved customer-managed keys according to policy.`;
   }
 
+  if (issueType === "unauthorizedPodExec") {
+    return `Investigate suspicious live eBPF process execution on ${cloudProvider} ${resourceType} ${targetResource}. Review the process evidence, confirm whether access was authorized, inspect Kubernetes RBAC, and recommend safe least-privilege controls.`;
+  }
+
   return `Safely perform action ${action} on ${cloudProvider} ${resourceType} ${targetResource}.`;
 }
 
@@ -74,6 +78,14 @@ function buildOriginalRemediationSteps({ issueType, targetResource }) {
       "Review the approved administrator IP ranges.",
       `Remove public 0.0.0.0/0 RDP access from ${targetResource}.`,
       "Allow RDP only from trusted administrator IP ranges.",
+    ];
+  }
+
+  if (issueType === "unauthorizedPodExec") {
+    return [
+      `Review the live eBPF process execution evidence for ${targetResource}.`,
+      "Confirm whether the pod exec activity was authorized by an approved operator or automation.",
+      "Inspect Kubernetes RBAC and workload access paths, then recommend least-privilege restrictions in simulate mode.",
     ];
   }
 
