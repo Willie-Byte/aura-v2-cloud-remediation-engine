@@ -10,6 +10,7 @@
     "rag:dev": "nodemon server.js",
     "rag:test:qdrant": "node scripts/testQdrantConnection.js",
     "rag:ingest": "node scripts/ingestRagDocuments.js",
+    "rag:search": "node scripts/searchRagDocuments.js",
 
     "stream:producer": "node streaming/producer.js",
     "stream:telemetry": "node streaming/telemetryProducer.js ssh",
