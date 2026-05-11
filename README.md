@@ -753,17 +753,3 @@ approval can gate risky remediations
 execution results are published for both success and failure
 local RAG can answer questions from project architecture documents
 the frontend can monitor the stream lifecycle and test the local RAG system
-EOF
-
-Then run:
-
-```bash
-git status
-git add README.md
-git commit -m "Replace README with updated Aura V2 and RAG documentation"
-git push
-
-After that, verify:
-
-grep -n "Local Vector RAG Feature" README.md
-git show --stat --oneline HEAD
