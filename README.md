@@ -438,6 +438,7 @@ replayable system activity
 clearer execution boundaries
 safer AI-assisted remediation
 observable audit and execution streams
+
 What Comes Next
 
 Potential next steps for Aura V2 include:
