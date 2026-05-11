@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { answerRagQuestion, getRagHealth } from "../services/api";
 import "../App.css";
 
@@ -6,16 +6,85 @@ function formatTags(tags) {
   return Array.isArray(tags) && tags.length > 0 ? tags : [];
 }
 
+function formatOptionLabel(value) {
+  if (!value) return "Unknown";
+
+  return value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 function RagTestPage() {
   const [query, setQuery] = useState(
     "What should stay separate from the vector RAG branch?"
   );
   const [limit, setLimit] = useState(5);
+  const [documentType, setDocumentType] = useState("all");
+  const [projectArea, setProjectArea] = useState("all");
+  const [tag, setTag] = useState("all");
   const [answerData, setAnswerData] = useState(null);
   const [health, setHealth] = useState(null);
   const [loading, setLoading] = useState(false);
   const [healthLoading, setHealthLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const supportedFilters = health?.supportedFilters || {};
+
+  const documentTypeOptions = useMemo(
+    () =>
+      supportedFilters.documentTypes || [
+        "all",
+        "general",
+        "architecture",
+        "streaming",
+        "policy",
+        "telemetry",
+        "game-dev",
+      ],
+    [supportedFilters.documentTypes]
+  );
+
+  const projectAreaOptions = useMemo(
+    () =>
+      supportedFilters.projectAreas || [
+        "all",
+        "aura",
+        "aura-rag",
+        "aura-streaming",
+        "aura-remediation",
+        "aura-telemetry",
+        "planetary-extraction-noir",
+      ],
+    [supportedFilters.projectAreas]
+  );
+
+  const tagOptions = useMemo(
+    () =>
+      supportedFilters.tags || [
+        "all",
+        "aura",
+        "rag",
+        "qdrant",
+        "embeddings",
+        "local-rag",
+        "architecture",
+        "streaming",
+        "kafka",
+        "event-driven",
+        "policy",
+        "remediation",
+        "validation",
+        "tetragon",
+        "ebpf",
+        "aks",
+        "telemetry",
+        "game-dev",
+        "godot",
+        "extraction-shooter",
+      ],
+    [supportedFilters.tags]
+  );
 
   const loadHealth = async () => {
     try {
@@ -35,6 +104,12 @@ function RagTestPage() {
     }
   };
 
+  const resetFilters = () => {
+    setDocumentType("all");
+    setProjectArea("all");
+    setTag("all");
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -51,6 +126,9 @@ function RagTestPage() {
       const response = await answerRagQuestion({
         query: query.trim(),
         limit: Number(limit),
+        documentType,
+        projectArea,
+        tag,
       });
 
       setAnswerData(response.data);
@@ -141,6 +219,62 @@ function RagTestPage() {
             placeholder="Ask a question about Aura..."
           />
 
+          <div className="rag-filter-grid">
+            <div>
+              <label className="form-label" htmlFor="rag-document-type">
+                Document Type
+              </label>
+              <select
+                id="rag-document-type"
+                className="rag-select"
+                value={documentType}
+                onChange={(event) => setDocumentType(event.target.value)}
+              >
+                {documentTypeOptions.map((option) => (
+                  <option value={option} key={option}>
+                    {option === "all" ? "All Document Types" : formatOptionLabel(option)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="form-label" htmlFor="rag-project-area">
+                Project Area
+              </label>
+              <select
+                id="rag-project-area"
+                className="rag-select"
+                value={projectArea}
+                onChange={(event) => setProjectArea(event.target.value)}
+              >
+                {projectAreaOptions.map((option) => (
+                  <option value={option} key={option}>
+                    {option === "all" ? "All Project Areas" : formatOptionLabel(option)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="form-label" htmlFor="rag-tag">
+                Tag
+              </label>
+              <select
+                id="rag-tag"
+                className="rag-select"
+                value={tag}
+                onChange={(event) => setTag(event.target.value)}
+              >
+                {tagOptions.map((option) => (
+                  <option value={option} key={option}>
+                    {option === "all" ? "All Tags" : formatOptionLabel(option)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <div className="rag-controls">
             <label className="form-label" htmlFor="rag-limit">
               Result Limit
@@ -159,6 +293,15 @@ function RagTestPage() {
             <button className="primary-button" type="submit" disabled={loading}>
               {loading ? "Asking..." : "Ask RAG"}
             </button>
+
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={resetFilters}
+              disabled={loading}
+            >
+              Reset Filters
+            </button>
           </div>
         </form>
 
@@ -175,7 +318,24 @@ function RagTestPage() {
             <span>Embedding: {answerData.embeddingModel}</span>
             <span>Chat: {answerData.chatModel}</span>
             <span>Sources: {answerData.sources?.length || 0}</span>
+            {answerData.filters && (
+              <>
+                <span>Doc Type: {answerData.filters.documentType}</span>
+                <span>Area: {answerData.filters.projectArea}</span>
+                <span>Tag: {answerData.filters.tag}</span>
+              </>
+            )}
           </div>
+        </section>
+      )}
+
+      {answerData?.sources?.length === 0 && (
+        <section className="dashboard-card">
+          <h2>No Sources Found</h2>
+          <p className="muted-text">
+            No chunks matched this question and filter combination. Try using
+            broader filters or ingesting more documents.
+          </p>
         </section>
       )}
 
@@ -203,9 +363,12 @@ function RagTestPage() {
 
                 {formatTags(source.tags).length > 0 && (
                   <div className="tag-list">
-                    {source.tags.map((tag) => (
-                      <span className="rag-tag" key={`${source.id}-${tag}`}>
-                        {tag}
+                    {source.tags.map((sourceTag) => (
+                      <span
+                        className="rag-tag"
+                        key={`${source.id}-${sourceTag}`}
+                      >
+                        {sourceTag}
                       </span>
                     ))}
                   </div>
@@ -241,9 +404,12 @@ function RagTestPage() {
 
                 {formatTags(result.tags).length > 0 && (
                   <div className="tag-list chunk-tags">
-                    {result.tags.map((tag) => (
-                      <span className="rag-tag" key={`${result.id}-${tag}`}>
-                        {tag}
+                    {result.tags.map((resultTag) => (
+                      <span
+                        className="rag-tag"
+                        key={`${result.id}-${resultTag}`}
+                      >
+                        {resultTag}
                       </span>
                     ))}
                   </div>
