@@ -34,3 +34,11 @@ yarn-error.log*
 
 # OS files
 .DS_Store
+
+# Local environment files
+.env
+.env.local
+client/.env
+client/.env.local
+backend/.env
+backend/.env.local
