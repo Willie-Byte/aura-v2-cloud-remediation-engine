@@ -20,14 +20,58 @@ function normalizeTags(tags) {
   return Array.isArray(tags) ? tags : [];
 }
 
-async function searchRagChunks(query, limit = 5) {
-  const queryVector = await createEmbedding(query.trim());
+function buildQdrantFilter({ documentType, projectArea, tag }) {
+  const must = [];
 
-  const results = await qdrantClient.search(RAG_COLLECTION_NAME, {
+  if (documentType && documentType !== "all") {
+    must.push({
+      key: "documentType",
+      match: {
+        value: documentType,
+      },
+    });
+  }
+
+  if (projectArea && projectArea !== "all") {
+    must.push({
+      key: "projectArea",
+      match: {
+        value: projectArea,
+      },
+    });
+  }
+
+  if (tag && tag !== "all") {
+    must.push({
+      key: "tags",
+      match: {
+        value: tag,
+      },
+    });
+  }
+
+  if (must.length === 0) {
+    return undefined;
+  }
+
+  return { must };
+}
+
+async function searchRagChunks(query, limit = 5, filters = {}) {
+  const queryVector = await createEmbedding(query.trim());
+  const qdrantFilter = buildQdrantFilter(filters);
+
+  const searchPayload = {
     vector: queryVector,
     limit: normalizeLimit(limit),
     with_payload: true,
-  });
+  };
+
+  if (qdrantFilter) {
+    searchPayload.filter = qdrantFilter;
+  }
+
+  const results = await qdrantClient.search(RAG_COLLECTION_NAME, searchPayload);
 
   return results.map((result) => ({
     id: result.id,
@@ -67,9 +111,18 @@ function buildContext(results) {
     .join("\n\n---\n\n");
 }
 
+function extractFilters(body) {
+  return {
+    documentType: body.documentType || "all",
+    projectArea: body.projectArea || "all",
+    tag: body.tag || "all",
+  };
+}
+
 router.post("/query", async (req, res) => {
   try {
     const { query, limit } = req.body;
+    const filters = extractFilters(req.body);
 
     if (!query || typeof query !== "string" || query.trim().length === 0) {
       return res.status(400).json({
@@ -78,13 +131,14 @@ router.post("/query", async (req, res) => {
       });
     }
 
-    const results = await searchRagChunks(query, limit);
+    const results = await searchRagChunks(query, limit, filters);
 
     return res.json({
       success: true,
       collection: RAG_COLLECTION_NAME,
       embeddingModel: EMBEDDING_MODEL,
       query: query.trim(),
+      filters,
       count: results.length,
       results,
     });
@@ -102,6 +156,7 @@ router.post("/query", async (req, res) => {
 router.post("/answer", async (req, res) => {
   try {
     const { query, limit } = req.body;
+    const filters = extractFilters(req.body);
 
     if (!query || typeof query !== "string" || query.trim().length === 0) {
       return res.status(400).json({
@@ -117,7 +172,7 @@ router.post("/answer", async (req, res) => {
       });
     }
 
-    const results = await searchRagChunks(query, limit);
+    const results = await searchRagChunks(query, limit, filters);
     const context = buildContext(results);
 
     const completion = await openai.chat.completions.create({
@@ -135,6 +190,9 @@ router.post("/answer", async (req, res) => {
             "Question:",
             query.trim(),
             "",
+            "Applied filters:",
+            JSON.stringify(filters, null, 2),
+            "",
             "Retrieved context:",
             context,
           ].join("\n"),
@@ -150,6 +208,7 @@ router.post("/answer", async (req, res) => {
       embeddingModel: EMBEDDING_MODEL,
       chatModel: CHAT_MODEL,
       query: query.trim(),
+      filters,
       answer,
       sources: results.map((result) => ({
         id: result.id,
@@ -185,6 +244,48 @@ router.get("/health", async (req, res) => {
       qdrantCollection: RAG_COLLECTION_NAME,
       embeddingModel: EMBEDDING_MODEL,
       chatModel: CHAT_MODEL,
+      supportedFilters: {
+        documentTypes: [
+          "all",
+          "general",
+          "architecture",
+          "streaming",
+          "policy",
+          "telemetry",
+          "game-dev",
+        ],
+        projectAreas: [
+          "all",
+          "aura",
+          "aura-rag",
+          "aura-streaming",
+          "aura-remediation",
+          "aura-telemetry",
+          "planetary-extraction-noir",
+        ],
+        tags: [
+          "all",
+          "aura",
+          "rag",
+          "qdrant",
+          "embeddings",
+          "local-rag",
+          "architecture",
+          "streaming",
+          "kafka",
+          "event-driven",
+          "policy",
+          "remediation",
+          "validation",
+          "tetragon",
+          "ebpf",
+          "aks",
+          "telemetry",
+          "game-dev",
+          "godot",
+          "extraction-shooter",
+        ],
+      },
       collections,
     });
   } catch (error) {
