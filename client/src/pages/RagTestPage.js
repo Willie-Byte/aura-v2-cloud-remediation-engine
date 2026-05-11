@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { answerRagQuestion, getRagHealth } from "../services/api";
 import "../App.css";
 
+function formatTags(tags) {
+  return Array.isArray(tags) && tags.length > 0 ? tags : [];
+}
+
 function RagTestPage() {
   const [query, setQuery] = useState(
     "What should stay separate from the vector RAG branch?"
@@ -181,10 +185,31 @@ function RagTestPage() {
 
           <div className="source-list">
             {answerData.sources.map((source) => (
-              <div className="source-card" key={source.id}>
-                <strong>{source.sourceFile}</strong>
-                <span>Chunk: {source.chunkIndex}</span>
+              <div className="source-card source-card-detailed" key={source.id}>
+                <div>
+                  <strong>{source.sourceFile}</strong>
+                  <p className="source-subtitle">
+                    {source.documentType || "unknown"} ·{" "}
+                    {source.projectArea || "unknown"}
+                  </p>
+                </div>
+
+                <span>
+                  Chunk: {source.chunkIndex}
+                  {source.totalChunks ? ` / ${source.totalChunks}` : ""}
+                </span>
+
                 <span>Score: {Number(source.score).toFixed(4)}</span>
+
+                {formatTags(source.tags).length > 0 && (
+                  <div className="tag-list">
+                    {source.tags.map((tag) => (
+                      <span className="rag-tag" key={`${source.id}-${tag}`}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -199,9 +224,30 @@ function RagTestPage() {
             {answerData.results.map((result) => (
               <article className="chunk-card" key={result.id}>
                 <div className="chunk-card-header">
-                  <strong>{result.sourceFile}</strong>
-                  <span>Chunk {result.chunkIndex}</span>
+                  <div>
+                    <strong>{result.sourceFile}</strong>
+                    <p className="source-subtitle">
+                      {result.documentType || "unknown"} ·{" "}
+                      {result.projectArea || "unknown"} ·{" "}
+                      {result.fileExtension || "no extension"}
+                    </p>
+                  </div>
+
+                  <span>
+                    Chunk {result.chunkIndex}
+                    {result.totalChunks ? ` / ${result.totalChunks}` : ""}
+                  </span>
                 </div>
+
+                {formatTags(result.tags).length > 0 && (
+                  <div className="tag-list chunk-tags">
+                    {result.tags.map((tag) => (
+                      <span className="rag-tag" key={`${result.id}-${tag}`}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 <pre>{result.text}</pre>
               </article>

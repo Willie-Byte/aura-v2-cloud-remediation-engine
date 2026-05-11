@@ -16,6 +16,10 @@ function normalizeLimit(limit) {
   return Number.isInteger(limit) && limit > 0 && limit <= 20 ? limit : 5;
 }
 
+function normalizeTags(tags) {
+  return Array.isArray(tags) ? tags : [];
+}
+
 async function searchRagChunks(query, limit = 5) {
   const queryVector = await createEmbedding(query.trim());
 
@@ -29,7 +33,12 @@ async function searchRagChunks(query, limit = 5) {
     id: result.id,
     score: result.score,
     sourceFile: result.payload?.sourceFile,
+    fileExtension: result.payload?.fileExtension,
+    documentType: result.payload?.documentType || "unknown",
+    projectArea: result.payload?.projectArea || "unknown",
+    tags: normalizeTags(result.payload?.tags),
     chunkIndex: result.payload?.chunkIndex,
+    totalChunks: result.payload?.totalChunks,
     text: result.payload?.text,
     characterLength: result.payload?.characterLength,
     ingestedAt: result.payload?.ingestedAt,
@@ -46,7 +55,10 @@ function buildContext(results) {
       return [
         `Source ${index + 1}`,
         `File: ${result.sourceFile || "unknown"}`,
-        `Chunk: ${result.chunkIndex ?? "unknown"}`,
+        `Document Type: ${result.documentType || "unknown"}`,
+        `Project Area: ${result.projectArea || "unknown"}`,
+        `Tags: ${result.tags?.length ? result.tags.join(", ") : "none"}`,
+        `Chunk: ${result.chunkIndex ?? "unknown"} of ${result.totalChunks ?? "unknown"}`,
         `Score: ${result.score}`,
         "Content:",
         result.text || "",
@@ -143,7 +155,12 @@ router.post("/answer", async (req, res) => {
         id: result.id,
         score: result.score,
         sourceFile: result.sourceFile,
+        fileExtension: result.fileExtension,
+        documentType: result.documentType,
+        projectArea: result.projectArea,
+        tags: result.tags,
         chunkIndex: result.chunkIndex,
+        totalChunks: result.totalChunks,
       })),
       results,
     });

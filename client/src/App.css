@@ -1042,3 +1042,37 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+.source-card-detailed {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.source-subtitle {
+  margin: 6px 0 0;
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.chunk-tags {
+  margin-bottom: 14px;
+}
+
+.rag-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(59, 130, 246, 0.14);
+  border: 1px solid rgba(96, 165, 250, 0.24);
+  color: #bfdbfe;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
