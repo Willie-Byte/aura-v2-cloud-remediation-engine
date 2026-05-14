@@ -1,38 +1,3 @@
-grep -n "Answered from" client/src/pages/RagTestPage.js
-grep -n "rag-source-summary" client/src/App.css
-186:    const sourceSummary = buildSourceSummary(results);
-195:      sourceSummary,
-229:    const sourceSummary = buildSourceSummary(results);
-266:      sourceSummary,
-1333:.rag-source-summary {
-1345:.rag-source-summary strong {
-1351:.rag-source-summary p {
-1357:.rag-source-summary > span {
-1368:.rag-source-summary-source-code-only {
-1375:.rag-source-summary-architecture-only {
-1382:.rag-source-summary-streaming-only {
-1389:.rag-source-summary-policy-only {
-1396:.rag-source-summary-telemetry-only {
-1403:.rag-source-summary-mixed-with-source-code,
-1404:.rag-source-summary-mixed-documentation {
-1411:.rag-source-summary-no-sources {
-1417:  .rag-source-summary {
-(base) wilsongaldamez@Wilsons-MacBook-Pro Aura-V2-Streaming-Spike %
-zsh: parse error near `wilsongaldamez@Wilso...'
-(base) wilsongaldamez@Wilsons-MacBook-Pro Aura-V2-Streaming-Spike % cd ~/Desktop/Aura-V2-Streaming-Spike
-git checkout main
-git pull
-git status
-git checkout -b docs/update-checklist-rag-source-summary
-Already on 'main'
-Your branch is up to date with 'origin/main'.
-Already up to date.
-On branch main
-Your branch is up to date with 'origin/main'.
-
-nothing to commit, working tree clean
-Switched to a new branch 'docs/update-checklist-rag-source-summary'
-(base) wilsongaldamez@Wilsons-MacBook-Pro Aura-V2-Streaming-Spike % cat AURA_V2_DEMO_CHECKLIST.md
 # Aura V2 Demo Checklist
 
 Use this checklist to demo the current stable `main` branch of Aura V2.

@@ -27,7 +27,8 @@
     "rag:ingest:source": "node scripts/ingestSourceCodeForRag.js",
     "rag:test:qdrant": "node scripts/testQdrantConnection.js",
     "rag:ingest": "node scripts/ingestRagDocuments.js",
-    "rag:search": "node scripts/searchRagDocuments.js"
+    "rag:search": "node scripts/searchRagDocuments.js",
+    "rag:ingest:all": "npm run rag:ingest && npm run rag:ingest:source"
   },
   "keywords": [],
   "author": "",
