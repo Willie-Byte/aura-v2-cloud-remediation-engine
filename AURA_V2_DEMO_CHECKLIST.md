@@ -12,6 +12,8 @@ Aura V2 currently demonstrates:
 - Local Vector RAG with Qdrant
 - OpenAI embeddings
 - RAG document ingestion
+- Source-code ingestion for RAG
+- Source-code filter options in the RAG API and frontend
 - RAG health, query, and answer endpoints
 - Frontend RAG test console
 - Clear safety boundaries between local RAG, Kafka, AKS, eBPF, and production remediation
@@ -36,13 +38,14 @@ Your branch is up to date with 'origin/main'.
 nothing to commit, working tree clean
 ```
 
-The latest commits should include:
+The latest commits should include recent work such as:
 
 ```text
+Merge pull request #5 from Willie-Byte/feature/rag-source-code-filters
+Merge pull request #4 from Willie-Byte/feature/rag-source-code-ingestion
+Add Aura V2 demo checklist
 Add Qdrant client dependency for local RAG
 Merge pull request #3 from Willie-Byte/feature/vector-rag-clean
-Update backend package lock for Node 22
-Merge pull request #2 from Willie-Byte/fix/kafka-stability
 ```
 
 ## 2. Use the Correct Node Version
@@ -129,6 +132,21 @@ Expected response should include:
 "chatModel":"gpt-4o-mini"
 ```
 
+The supported filters should now include:
+
+```text
+source-code
+backend
+frontend
+react
+express
+routes
+services
+scripts
+developer-tools
+worker
+```
+
 If this fails with `Cannot GET /api/rag/health`, make sure:
 
 - You are on `main`
@@ -146,7 +164,7 @@ cd ~/Desktop/Aura-V2-Streaming-Spike/backend
 npm run rag:ingest
 ```
 
-This loads documents from:
+This loads architecture and project documents from:
 
 ```text
 backend/rag-documents
@@ -163,7 +181,53 @@ aura-telemetry-ebpf-tetragon.md
 aura-rag-document-index.md
 ```
 
-## 7. Test RAG Search From Terminal
+## 7. Ingest Source Code for RAG
+
+Aura can now ingest selected backend and frontend source-code files into Qdrant.
+
+Run from the backend folder:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike/backend
+npm run rag:ingest:source
+```
+
+Expected output should include something like:
+
+```text
+Starting Aura source-code RAG ingestion...
+Found 58 source files to ingest.
+Upserted 241 chunks into aura_rag_documents
+Aura source-code RAG ingestion complete.
+```
+
+The source-code ingestion script should skip unsafe or noisy files and folders such as:
+
+```text
+.git
+node_modules
+build
+dist
+coverage
+.env
+.env.local
+package-lock.json
+```
+
+It should ingest selected files from areas such as:
+
+```text
+backend/routes
+backend/services
+backend/streaming
+backend/scripts
+backend/server.js
+client/src
+README.md
+AURA_V2_DEMO_CHECKLIST.md
+```
+
+## 8. Test RAG Search From Terminal
 
 Run from the backend folder:
 
@@ -179,20 +243,56 @@ Expected answer should mention that the vector RAG system should stay separate f
 - Rust eBPF enforcement code
 - production remediation execution
 
-## 8. Test the RAG Answer API
+## 9. Test Source-Code RAG Search From Terminal
+
+Run these after source-code ingestion:
+
+```bash
+npm run rag:search -- "Where is Kafka initialized?"
+```
+
+Expected top sources should include:
+
+```text
+backend/streaming/kafkaClient.js
+backend/streaming/producer.js
+```
+
+```bash
+npm run rag:search -- "Which file defines the RAG routes?"
+```
+
+Expected top source:
+
+```text
+backend/routes/ragRoutes.js
+```
+
+```bash
+npm run rag:search -- "Where is Qdrant configured?"
+```
+
+Expected top sources should include:
+
+```text
+backend/services/qdrantService.js
+backend/scripts/testQdrantConnection.js
+```
+
+## 10. Test the RAG Answer API
 
 Run:
 
 ```bash
 curl -X POST http://localhost:5001/api/rag/answer \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "What should stay separate from the vector RAG branch?",
-    "limit": 5,
-    "documentType": "architecture",
-    "projectArea": "aura-rag",
-    "tag": "rag"
-  }'
+ -H "Content-Type: application/json" \
+ -d '{
+   "query": "What should stay separate from the vector RAG branch?",
+   "limit": 5,
+   "documentType": "architecture",
+   "projectArea": "aura-rag",
+   "tag": "rag"
+ }'
 ```
 
 Expected response should include:
@@ -203,7 +303,45 @@ Expected response should include:
 - similarity scores
 - retrieved chunks
 
-## 9. Start the Frontend
+## 11. Test the Source-Code RAG Answer API
+
+Run:
+
+```bash
+curl -X POST http://localhost:5001/api/rag/answer \
+ -H "Content-Type: application/json" \
+ -d '{
+   "query": "Where is Kafka initialized?",
+   "limit": 5,
+   "documentType": "source-code",
+   "projectArea": "aura-streaming",
+   "tag": "kafka"
+ }'
+```
+
+Expected response should cite source-code chunks related to Kafka initialization.
+
+Another useful source-code API test:
+
+```bash
+curl -X POST http://localhost:5001/api/rag/answer \
+ -H "Content-Type: application/json" \
+ -d '{
+   "query": "Which file defines the RAG routes?",
+   "limit": 5,
+   "documentType": "source-code",
+   "projectArea": "aura-rag",
+   "tag": "routes"
+ }'
+```
+
+Expected response should mention:
+
+```text
+backend/routes/ragRoutes.js
+```
+
+## 12. Start the Frontend
 
 Open Terminal 3:
 
@@ -227,7 +365,7 @@ REACT_APP_API_URL=http://localhost:5001/api
 
 Restart the React dev server after changing `.env`.
 
-## 10. Frontend RAG Demo Questions
+## 13. Frontend RAG Demo Questions
 
 Use the RAG test page at:
 
@@ -309,7 +447,101 @@ Project Area: aura-telemetry
 Tag: tetragon
 ```
 
-## 11. Test Kafka Stability
+## 14. Frontend Source-Code RAG Demo Questions
+
+Use these to prove Aura can answer implementation-level questions.
+
+### Kafka Source-Code Test
+
+Question:
+
+```text
+Where is Kafka initialized?
+```
+
+Filters:
+
+```text
+Document Type: source-code
+Project Area: aura-streaming
+Tag: kafka
+```
+
+Expected sources should include:
+
+```text
+backend/streaming/kafkaClient.js
+```
+
+### RAG Routes Source-Code Test
+
+Question:
+
+```text
+Which file defines the RAG routes?
+```
+
+Filters:
+
+```text
+Document Type: source-code
+Project Area: aura-rag
+Tag: routes
+```
+
+Expected source:
+
+```text
+backend/routes/ragRoutes.js
+```
+
+### Qdrant Source-Code Test
+
+Question:
+
+```text
+Where is Qdrant configured?
+```
+
+Filters:
+
+```text
+Document Type: source-code
+Project Area: aura-rag
+Tag: qdrant
+```
+
+Expected source:
+
+```text
+backend/services/qdrantService.js
+```
+
+### Worker Validation Source-Code Test
+
+Question:
+
+```text
+How does the worker validate remediation commands?
+```
+
+Filters:
+
+```text
+Document Type: source-code
+Project Area: aura-remediation
+Tag: worker
+```
+
+Expected sources may include:
+
+```text
+backend/streaming/worker.js
+backend/streaming/validator.js
+backend/streaming/remediationPolicy.js
+```
+
+## 15. Test Kafka Stability
 
 Open Terminal 2:
 
@@ -335,7 +567,7 @@ Control + C
 
 There should be no `TimeoutNegativeWarning` when using Node 22.
 
-## 12. Optional Streaming Demo
+## 16. Optional Streaming Demo
 
 Run from the backend folder:
 
@@ -380,7 +612,7 @@ Expected result:
 - audit event is published
 - execution result has `status: rejected`
 
-## 13. RAG-Only Demo Safety Settings
+## 17. RAG-Only Demo Safety Settings
 
 For a RAG-only demo, keep this in `backend/.env`:
 
@@ -394,7 +626,7 @@ RAG_CHAT_MODEL=gpt-4o-mini
 
 Do not commit real `.env` files.
 
-## 14. Safety Boundaries To Explain During Demo
+## 18. Safety Boundaries To Explain During Demo
 
 Aura V2 is intentionally conservative.
 
@@ -402,6 +634,8 @@ For the current demo:
 
 - RAG is local-first
 - Qdrant runs locally
+- Source-code ingestion only embeds selected local files
+- Source-code ingestion skips `.env`, lockfiles, `node_modules`, build output, and Git metadata
 - Kafka is tested separately
 - Production remediation execution is not enabled
 - The system should not modify live AKS resources
@@ -409,17 +643,17 @@ For the current demo:
 - Rust eBPF enforcement work stays separate from RAG
 - Terraform apply mode is not production-ready
 
-## 15. Good Demo Explanation
+## 19. Good Demo Explanation
 
 Use this short explanation:
 
 ```text
 Aura V2 is an event-driven cloud remediation prototype. It uses Kafka to separate threat intake, AI-assisted remediation planning, validation, execution results, approval decisions, DLQ handling, and audit events. The system is safety-first, so real execution is blocked behind policy validation, simulation mode, and future approval controls.
 
-The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents stored in Qdrant with OpenAI embeddings. This lets the system explain its own architecture, safety boundaries, remediation policy, Kafka flow, and telemetry plan without connecting RAG to live infrastructure yet.
+The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. This lets the system explain its own architecture, safety boundaries, remediation policy, Kafka flow, telemetry plan, and implementation details without connecting RAG to live infrastructure yet.
 ```
 
-## 16. Troubleshooting
+## 20. Troubleshooting
 
 ### RAG health returns 404
 
@@ -453,6 +687,23 @@ npm install
 
 The dependency should already be committed in `package.json`.
 
+### Missing RAG script
+
+If you see:
+
+```text
+npm error Missing script: "rag:search"
+```
+
+Check `backend/package.json` and confirm it contains:
+
+```json
+"rag:test:qdrant": "node scripts/testQdrantConnection.js",
+"rag:ingest": "node scripts/ingestRagDocuments.js",
+"rag:ingest:source": "node scripts/ingestSourceCodeForRag.js",
+"rag:search": "node scripts/searchRagDocuments.js"
+```
+
 ### Qdrant is not reachable
 
 Run:
@@ -460,6 +711,48 @@ Run:
 ```bash
 docker start aura-qdrant
 curl http://localhost:6333
+```
+
+### Source-code filters do not appear
+
+Restart the backend and refresh the RAG health check:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike/backend
+npm run dev
+```
+
+Then check:
+
+```bash
+curl http://localhost:5001/api/rag/health
+```
+
+The response should include:
+
+```text
+source-code
+backend
+frontend
+routes
+worker
+```
+
+### Source-code answers return no results
+
+Run source-code ingestion again:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike/backend
+npm run rag:ingest:source
+```
+
+Then try broader filters:
+
+```text
+Document Type: source-code
+Project Area: all
+Tag: all
 ```
 
 ### Kafka warning appears
@@ -494,7 +787,7 @@ Verify:
 ps aux | grep "streaming" | grep -v grep
 ```
 
-## 17. Final Clean Check
+## 21. Final Clean Check
 
 Run:
 
@@ -512,20 +805,36 @@ Your branch is up to date with 'origin/main'.
 nothing to commit, working tree clean
 ```
 
-## 18. Recommended Next Branch
+Latest commits should include:
+
+```text
+Merge pull request #5 from Willie-Byte/feature/rag-source-code-filters
+Merge pull request #4 from Willie-Byte/feature/rag-source-code-ingestion
+Add Aura V2 demo checklist
+Add Qdrant client dependency for local RAG
+Merge pull request #3 from Willie-Byte/feature/vector-rag-clean
+```
+
+## 22. Recommended Next Branch
 
 Next engineering branch:
 
 ```text
-feature/rag-source-code-ingestion
+feature/rag-answer-source-mode
 ```
 
 Goal:
 
-Allow Aura to ingest selected source code files so it can answer questions like:
+Improve the RAG answer endpoint and frontend so Aura can make it clearer when an answer came from:
 
-- Where is Kafka initialized?
-- Which file defines RAG routes?
-- How does the worker validate remediation commands?
-- What frontend page calls the RAG answer endpoint?
-- Which files define the remediation safety policy?
+- architecture documents
+- source-code chunks
+- mixed architecture and source-code results
+
+Possible improvements:
+
+- Add a visible `ingestionType` field to returned results
+- Show `source-code` chunks with a code-focused badge
+- Add a quick preset for source-code searches
+- Add a quick preset for architecture-only searches
+- Add a frontend toggle for vs. 
