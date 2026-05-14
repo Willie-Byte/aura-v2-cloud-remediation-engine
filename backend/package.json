@@ -43,5 +43,9 @@
   "devDependencies": {
     "concurrently": "^9.0.1",
     "nodemon": "^3.1.14"
+  },
+  "engines": {
+    "node": ">=22 <24",
+    "npm": ">=10"
   }
 }
