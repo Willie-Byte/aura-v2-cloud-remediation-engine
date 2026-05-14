@@ -23,7 +23,11 @@
     "stream:approval": "node streaming/approvalConsumer.js",
     "stream:approval-decisions": "node streaming/approvalDecisionConsumer.js",
     "stream:demo": "concurrently \"npm run stream:audit\" \"npm run stream:results\" \"npm run stream:approval\" \"npm run stream:approval-decisions\" \"npm run stream:telemetry-normalizer\" \"npm run stream:worker\" \"npm run stream:orchestrator\"",
-    "stream:full": "concurrently \"npm run stream:audit\" \"npm run stream:results\" \"npm run stream:dlq\" \"npm run stream:approval\" \"npm run stream:approval-decisions\" \"npm run stream:telemetry-normalizer\" \"npm run stream:worker\" \"npm run stream:orchestrator\""
+    "stream:full": "concurrently \"npm run stream:audit\" \"npm run stream:results\" \"npm run stream:dlq\" \"npm run stream:approval\" \"npm run stream:approval-decisions\" \"npm run stream:telemetry-normalizer\" \"npm run stream:worker\" \"npm run stream:orchestrator\"",
+    "rag:ingest:source": "node scripts/ingestSourceCodeForRag.js",
+    "rag:test:qdrant": "node scripts/testQdrantConnection.js",
+    "rag:ingest": "node scripts/ingestRagDocuments.js",
+    "rag:search": "node scripts/searchRagDocuments.js"
   },
   "keywords": [],
   "author": "",
