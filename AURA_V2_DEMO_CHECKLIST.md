@@ -1,3 +1,38 @@
+grep -n "Answered from" client/src/pages/RagTestPage.js
+grep -n "rag-source-summary" client/src/App.css
+186:    const sourceSummary = buildSourceSummary(results);
+195:      sourceSummary,
+229:    const sourceSummary = buildSourceSummary(results);
+266:      sourceSummary,
+1333:.rag-source-summary {
+1345:.rag-source-summary strong {
+1351:.rag-source-summary p {
+1357:.rag-source-summary > span {
+1368:.rag-source-summary-source-code-only {
+1375:.rag-source-summary-architecture-only {
+1382:.rag-source-summary-streaming-only {
+1389:.rag-source-summary-policy-only {
+1396:.rag-source-summary-telemetry-only {
+1403:.rag-source-summary-mixed-with-source-code,
+1404:.rag-source-summary-mixed-documentation {
+1411:.rag-source-summary-no-sources {
+1417:  .rag-source-summary {
+(base) wilsongaldamez@Wilsons-MacBook-Pro Aura-V2-Streaming-Spike %
+zsh: parse error near `wilsongaldamez@Wilso...'
+(base) wilsongaldamez@Wilsons-MacBook-Pro Aura-V2-Streaming-Spike % cd ~/Desktop/Aura-V2-Streaming-Spike
+git checkout main
+git pull
+git status
+git checkout -b docs/update-checklist-rag-source-summary
+Already on 'main'
+Your branch is up to date with 'origin/main'.
+Already up to date.
+On branch main
+Your branch is up to date with 'origin/main'.
+
+nothing to commit, working tree clean
+Switched to a new branch 'docs/update-checklist-rag-source-summary'
+(base) wilsongaldamez@Wilsons-MacBook-Pro Aura-V2-Streaming-Spike % cat AURA_V2_DEMO_CHECKLIST.md
 # Aura V2 Demo Checklist
 
 Use this checklist to demo the current stable `main` branch of Aura V2.
@@ -19,6 +54,7 @@ Aura V2 currently demonstrates:
 - Polished RAG preset cards for fast demos
 - Active preset highlighting in the RAG UI
 - RAG source type badges for source cards and retrieved chunks
+- RAG answer source summary banner using `sourceSummary`
 - Clear safety boundaries between local RAG, Kafka, AKS, eBPF, and production remediation
 
 ## 1. Start From a Clean Main Branch
@@ -44,11 +80,11 @@ nothing to commit, working tree clean
 The latest commits should include recent work such as:
 
 ```text
+Merge pull request #9 from Willie-Byte/feature/rag-answer-source-mode
+Merge pull request #8 from Willie-Byte/docs/update-checklist-rag-source-badges
 Merge pull request #7 from Willie-Byte/feature/rag-source-badges
 Update demo checklist with RAG UI presets
 Merge pull request #6 from Willie-Byte/feature/rag-ui-presets
-Update Aura V2 demo checklist with source code RAG
-Merge pull request #5 from Willie-Byte/feature/rag-source-code-filters
 ```
 
 ## 2. Use the Correct Node Version
@@ -466,7 +502,56 @@ Telemetry badge test:
 
 The badges make it easier to explain whether Aura answered from source code, architecture documents, streaming documentation, policy documentation, or telemetry documentation.
 
-## 15. Frontend RAG Demo Questions
+## 15. Verify RAG Answer Source Summary
+
+After running a RAG answer request, the Answer section should show a source summary banner above the answer text.
+
+Expected banner examples:
+
+```text
+Answered from source-code chunks
+Answered from architecture documents
+Answered from telemetry documents
+Answered from mixed documentation and source-code chunks
+Answered from mixed documentation sources
+No sources found
+```
+
+Recommended source summary test:
+
+1. Open the RAG test page:
+
+```text
+http://localhost:3000/rag-test
+```
+
+2. Click `Kafka Source Search`.
+3. Click `Ask RAG`.
+4. Confirm the Answer card shows:
+
+```text
+Answered from source-code chunks
+Source Code: 5
+5 sources
+```
+
+The backend response should also include a `sourceSummary` object:
+
+```json
+{
+  "mode": "source-code-only",
+  "label": "Answered from source-code chunks",
+  "totalSources": 5,
+  "documentTypes": ["source-code"],
+  "documentTypeCounts": {
+    "source-code": 5
+  }
+}
+```
+
+This makes the demo clearer because the viewer can immediately tell whether Aura answered from source code, documentation, or mixed retrieved context.
+
+## 16. Frontend RAG Demo Questions
 
 Use the RAG test page at:
 
@@ -548,7 +633,7 @@ Project Area: aura-telemetry
 Tag: tetragon
 ```
 
-## 16. Frontend Source-Code RAG Demo Questions
+## 17. Frontend Source-Code RAG Demo Questions
 
 Use these to prove Aura can answer implementation-level questions.
 
@@ -642,7 +727,7 @@ backend/streaming/validator.js
 backend/streaming/remediationPolicy.js
 ```
 
-## 17. Test Kafka Stability
+## 18. Test Kafka Stability
 
 Open Terminal 2:
 
@@ -668,7 +753,7 @@ Control + C
 
 There should be no `TimeoutNegativeWarning` when using Node 22.
 
-## 18. Optional Streaming Demo
+## 19. Optional Streaming Demo
 
 Run from the backend folder:
 
@@ -713,7 +798,7 @@ Expected result:
 - audit event is published
 - execution result has `status: rejected`
 
-## 19. RAG-Only Demo Safety Settings
+## 20. RAG-Only Demo Safety Settings
 
 For a RAG-only demo, keep this in `backend/.env`:
 
@@ -727,7 +812,7 @@ RAG_CHAT_MODEL=gpt-4o-mini
 
 Do not commit real `.env` files.
 
-## 20. Safety Boundaries To Explain During Demo
+## 21. Safety Boundaries To Explain During Demo
 
 Aura V2 is intentionally conservative.
 
@@ -744,17 +829,17 @@ For the current demo:
 - Rust eBPF enforcement work stays separate from RAG
 - Terraform apply mode is not production-ready
 
-## 21. Good Demo Explanation
+## 22. Good Demo Explanation
 
 Use this short explanation:
 
 ```text
 Aura V2 is an event-driven cloud remediation prototype. It uses Kafka to separate threat intake, AI-assisted remediation planning, validation, execution results, approval decisions, DLQ handling, and audit events. The system is safety-first, so real execution is blocked behind policy validation, simulation mode, and future approval controls.
 
-The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards and source type badges for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, or telemetry documents.
+The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context.
 ```
 
-## 22. Troubleshooting
+## 23. Troubleshooting
 
 ### RAG health returns 404
 
@@ -854,6 +939,49 @@ rag-source-badge-policy
 rag-source-badge-telemetry
 ```
 
+### RAG answer source summary does not appear
+
+Make sure the latest backend and frontend changes are on `main`:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+git checkout main
+git pull
+```
+
+Restart the backend and frontend:
+
+```bash
+cd backend
+npm run dev
+```
+
+In another terminal:
+
+```bash
+cd client
+npm start
+```
+
+Then run `Kafka Source Search` from the RAG test page.
+
+The backend `/api/rag/answer` response should include:
+
+```text
+sourceSummary
+source-code-only
+Answered from source-code chunks
+```
+
+The frontend should include CSS classes like:
+
+```text
+rag-source-summary
+rag-source-summary-source-code-only
+rag-source-summary-mixed-with-source-code
+rag-source-summary-mixed-documentation
+```
+
 ### Qdrant is not reachable
 
 Run:
@@ -937,7 +1065,7 @@ Verify:
 ps aux | grep "streaming" | grep -v grep
 ```
 
-## 23. Final Clean Check
+## 24. Final Clean Check
 
 Run:
 
@@ -958,29 +1086,31 @@ nothing to commit, working tree clean
 Latest commits should include:
 
 ```text
+Merge pull request #9 from Willie-Byte/feature/rag-answer-source-mode
+Merge pull request #8 from Willie-Byte/docs/update-checklist-rag-source-badges
 Merge pull request #7 from Willie-Byte/feature/rag-source-badges
 Update demo checklist with RAG UI presets
 Merge pull request #6 from Willie-Byte/feature/rag-ui-presets
-Update Aura V2 demo checklist with source code RAG
-Merge pull request #5 from Willie-Byte/feature/rag-source-code-filters
 ```
 
-## 24. Recommended Next Branch
+## 25. Recommended Next Branch
 
 Next engineering branch:
 
 ```text
-feature/rag-answer-source-mode
+feature/rag-ingest-all-script
 ```
 
 Goal:
 
-Improve the RAG answer endpoint and frontend so Aura can summarize what type of sources were used to answer a question.
+Add a single command that refreshes all RAG content in one step.
 
 Possible improvements:
 
-- Add a `sourceSummary` object to the RAG answer response
-- Count how many results came from `source-code`, `architecture`, `streaming`, `policy`, and `telemetry`
-- Show whether an answer is source-code-only, documentation-only, or mixed
-- Add a frontend answer banner such as `Answered from source-code chunks`
-- Keep the current preset cards and source badges as the fast demo entry point
+- Add `npm run rag:ingest:all`
+- Run architecture/document ingestion
+- Run source-code ingestion
+- Print a clean success summary
+- Make the demo setup faster and less error-prone
+- Keep RAG ingestion local-only and avoid touching Kafka, AKS, Tetragon, or production remediation
+(base) wilsongaldamez@Wilsons-MacBook-Pro Aura-V2-Streaming-Spike % 
