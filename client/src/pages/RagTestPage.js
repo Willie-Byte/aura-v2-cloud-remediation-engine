@@ -41,6 +41,7 @@ function RagTestPage() {
         "policy",
         "telemetry",
         "game-dev",
+        "source-code",
       ],
     [supportedFilters.documentTypes]
   );
@@ -82,6 +83,16 @@ function RagTestPage() {
         "game-dev",
         "godot",
         "extraction-shooter",
+        "source-code",
+        "backend",
+        "frontend",
+        "react",
+        "express",
+        "routes",
+        "services",
+        "scripts",
+        "developer-tools",
+        "worker",
       ],
     [supportedFilters.tags]
   );
