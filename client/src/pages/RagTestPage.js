@@ -15,6 +15,16 @@ function formatOptionLabel(value) {
     .join(" ");
 }
 
+function getSourceBadgeClass(documentType) {
+  const normalizedType = documentType || "unknown";
+
+  return `rag-source-badge rag-source-badge-${normalizedType}`;
+}
+
+function getSourceBadgeLabel(documentType) {
+  return formatOptionLabel(documentType || "unknown").toUpperCase();
+}
+
 const ragPresets = [
   {
     label: "Kafka Source Search",
@@ -457,9 +467,14 @@ function RagTestPage() {
             {answerData.sources.map((source) => (
               <div className="source-card source-card-detailed" key={source.id}>
                 <div>
-                  <strong>{source.sourceFile}</strong>
+                  <div className="source-title-row">
+                    <strong>{source.sourceFile}</strong>
+                    <span className={getSourceBadgeClass(source.documentType)}>
+                      {getSourceBadgeLabel(source.documentType)}
+                    </span>
+                  </div>
+
                   <p className="source-subtitle">
-                    {source.documentType || "unknown"} ·{" "}
                     {source.projectArea || "unknown"}
                   </p>
                 </div>
@@ -498,9 +513,14 @@ function RagTestPage() {
               <article className="chunk-card" key={result.id}>
                 <div className="chunk-card-header">
                   <div>
-                    <strong>{result.sourceFile}</strong>
+                    <div className="source-title-row">
+                      <strong>{result.sourceFile}</strong>
+                      <span className={getSourceBadgeClass(result.documentType)}>
+                        {getSourceBadgeLabel(result.documentType)}
+                      </span>
+                    </div>
+
                     <p className="source-subtitle">
-                      {result.documentType || "unknown"} ·{" "}
                       {result.projectArea || "unknown"} ·{" "}
                       {result.fileExtension || "no extension"}
                     </p>
