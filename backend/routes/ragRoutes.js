@@ -119,6 +119,57 @@ function extractFilters(body) {
   };
 }
 
+function buildSourceSummary(results) {
+  const documentTypeCounts = {};
+  const projectAreaCounts = {};
+  const tagCounts = {};
+
+  for (const result of results || []) {
+    const documentType = result.documentType || "unknown";
+    const projectArea = result.projectArea || "unknown";
+
+    documentTypeCounts[documentType] = (documentTypeCounts[documentType] || 0) + 1;
+    projectAreaCounts[projectArea] = (projectAreaCounts[projectArea] || 0) + 1;
+
+    for (const tag of normalizeTags(result.tags)) {
+      tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+    }
+  }
+
+  const documentTypes = Object.keys(documentTypeCounts);
+  let mode = "no-sources";
+  let label = "No sources found";
+
+  if (documentTypes.length === 1) {
+    const onlyType = documentTypes[0];
+
+    if (onlyType === "source-code") {
+      mode = "source-code-only";
+      label = "Answered from source-code chunks";
+    } else {
+      mode = `${onlyType}-only`;
+      label = `Answered from ${onlyType} documents`;
+    }
+  } else if (documentTypes.length > 1) {
+    const hasSourceCode = documentTypes.includes("source-code");
+
+    mode = hasSourceCode ? "mixed-with-source-code" : "mixed-documentation";
+    label = hasSourceCode
+      ? "Answered from mixed documentation and source-code chunks"
+      : "Answered from mixed documentation sources";
+  }
+
+  return {
+    mode,
+    label,
+    totalSources: results?.length || 0,
+    documentTypes,
+    documentTypeCounts,
+    projectAreaCounts,
+    tagCounts,
+  };
+}
+
 router.post("/query", async (req, res) => {
   try {
     const { query, limit } = req.body;
@@ -132,6 +183,7 @@ router.post("/query", async (req, res) => {
     }
 
     const results = await searchRagChunks(query, limit, filters);
+    const sourceSummary = buildSourceSummary(results);
 
     return res.json({
       success: true,
@@ -140,6 +192,7 @@ router.post("/query", async (req, res) => {
       query: query.trim(),
       filters,
       count: results.length,
+      sourceSummary,
       results,
     });
   } catch (error) {
@@ -173,6 +226,7 @@ router.post("/answer", async (req, res) => {
     }
 
     const results = await searchRagChunks(query, limit, filters);
+    const sourceSummary = buildSourceSummary(results);
     const context = buildContext(results);
 
     const completion = await openai.chat.completions.create({
@@ -209,6 +263,7 @@ router.post("/answer", async (req, res) => {
       chatModel: CHAT_MODEL,
       query: query.trim(),
       filters,
+      sourceSummary,
       answer,
       sources: results.map((result) => ({
         id: result.id,
