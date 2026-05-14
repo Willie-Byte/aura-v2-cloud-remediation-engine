@@ -25,6 +25,25 @@ function getSourceBadgeLabel(documentType) {
   return formatOptionLabel(documentType || "unknown").toUpperCase();
 }
 
+function getSourceSummaryClass(mode) {
+  const normalizedMode = mode || "no-sources";
+
+  return `rag-source-summary rag-source-summary-${normalizedMode}`;
+}
+
+function formatSourceSummaryCounts(sourceSummary) {
+  const counts = sourceSummary?.documentTypeCounts || {};
+  const entries = Object.entries(counts);
+
+  if (entries.length === 0) {
+    return "No matching sources were returned.";
+  }
+
+  return entries
+    .map(([type, count]) => `${formatOptionLabel(type)}: ${count}`)
+    .join(" · ");
+}
+
 const ragPresets = [
   {
     label: "Kafka Source Search",
@@ -431,6 +450,18 @@ function RagTestPage() {
       {answerData && (
         <section className="dashboard-card">
           <h2>Answer</h2>
+
+          {answerData.sourceSummary && (
+            <div className={getSourceSummaryClass(answerData.sourceSummary.mode)}>
+              <div>
+                <strong>{answerData.sourceSummary.label}</strong>
+                <p>{formatSourceSummaryCounts(answerData.sourceSummary)}</p>
+              </div>
+
+              <span>{answerData.sourceSummary.totalSources} sources</span>
+            </div>
+          )}
+
           <p className="rag-answer">{answerData.answer}</p>
 
           <div className="rag-meta">
