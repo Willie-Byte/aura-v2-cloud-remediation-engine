@@ -15,6 +15,57 @@ function formatOptionLabel(value) {
     .join(" ");
 }
 
+const ragPresets = [
+  {
+    label: "Kafka Source Search",
+    query: "Where is Kafka initialized?",
+    documentType: "source-code",
+    projectArea: "aura-streaming",
+    tag: "kafka",
+    limit: 5,
+  },
+  {
+    label: "RAG Routes Search",
+    query: "Which file defines the RAG routes?",
+    documentType: "source-code",
+    projectArea: "aura-rag",
+    tag: "routes",
+    limit: 5,
+  },
+  {
+    label: "Qdrant Config Search",
+    query: "Where is Qdrant configured?",
+    documentType: "source-code",
+    projectArea: "aura-rag",
+    tag: "qdrant",
+    limit: 5,
+  },
+  {
+    label: "Worker Validation Search",
+    query: "How does the worker validate remediation commands?",
+    documentType: "source-code",
+    projectArea: "aura-remediation",
+    tag: "worker",
+    limit: 5,
+  },
+  {
+    label: "Safety Boundary Search",
+    query: "What should stay separate from the vector RAG branch?",
+    documentType: "architecture",
+    projectArea: "aura-rag",
+    tag: "rag",
+    limit: 5,
+  },
+  {
+    label: "Telemetry/Tetragon Search",
+    query: "What does Tetragon do in Aura?",
+    documentType: "telemetry",
+    projectArea: "aura-telemetry",
+    tag: "tetragon",
+    limit: 5,
+  },
+];
+
 function RagTestPage() {
   const [query, setQuery] = useState(
     "What should stay separate from the vector RAG branch?"
@@ -23,6 +74,7 @@ function RagTestPage() {
   const [documentType, setDocumentType] = useState("all");
   const [projectArea, setProjectArea] = useState("all");
   const [tag, setTag] = useState("all");
+  const [activePresetLabel, setActivePresetLabel] = useState("");
   const [answerData, setAnswerData] = useState(null);
   const [health, setHealth] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -119,6 +171,18 @@ function RagTestPage() {
     setDocumentType("all");
     setProjectArea("all");
     setTag("all");
+    setActivePresetLabel("");
+  };
+
+  const applyPreset = (preset) => {
+    setQuery(preset.query);
+    setDocumentType(preset.documentType);
+    setProjectArea(preset.projectArea);
+    setTag(preset.tag);
+    setLimit(preset.limit);
+    setActivePresetLabel(preset.label);
+    setAnswerData(null);
+    setError("");
   };
 
   const handleSubmit = async (event) => {
@@ -215,6 +279,41 @@ function RagTestPage() {
 
       <section className="dashboard-card">
         <h2>Ask Aura RAG</h2>
+
+        <div className="rag-preset-panel">
+          <div className="rag-preset-header">
+            <div>
+              <p className="eyebrow">Demo Presets</p>
+              <h3>Quick RAG Searches</h3>
+            </div>
+
+            <p className="muted-text">
+              Pick a preset to auto-fill the question, source type, project area,
+              tag, and result limit.
+            </p>
+          </div>
+
+          <div className="rag-preset-grid">
+            {ragPresets.map((preset) => (
+              <button
+                className={`rag-preset-button ${
+                  activePresetLabel === preset.label ? "rag-preset-button-active" : ""
+                }`}
+                type="button"
+                key={preset.label}
+                onClick={() => applyPreset(preset)}
+                disabled={loading}
+              >
+                <span>{preset.label}</span>
+                <small>
+                  {formatOptionLabel(preset.documentType)} ·{" "}
+                  {formatOptionLabel(preset.projectArea)} ·{" "}
+                  {formatOptionLabel(preset.tag)}
+                </small>
+              </button>
+            ))}
+          </div>
+        </div>
 
         <form className="rag-form" onSubmit={handleSubmit}>
           <label className="form-label" htmlFor="rag-query">
