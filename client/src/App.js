@@ -11,6 +11,7 @@ import AlertDetailsPage from "./pages/AlertDetailsPage";
 import QuantumRiskPage from "./pages/QuantumRiskPage";
 import WebhookEventsPage from "./pages/WebhookEventsPage";
 import StreamingMonitorPage from "./pages/StreamingMonitorPage";
+import RagTestPage from "./pages/RagTestPage";
 import "./App.css";
 
 function AppNavbar() {
@@ -61,6 +62,15 @@ function AppNavbar() {
             >
               Streaming Monitor
             </NavLink>
+
+            <NavLink
+              to="/rag-test"
+              className={({ isActive }) =>
+                isActive ? "navbar-link navbar-link-active" : "navbar-link"
+              }
+            >
+              RAG Test
+            </NavLink>
           </div>
         </div>
 
@@ -83,6 +93,7 @@ function App() {
         <Route path="/quantum-risk" element={<QuantumRiskPage />} />
         <Route path="/webhook-events" element={<WebhookEventsPage />} />
         <Route path="/streaming-monitor" element={<StreamingMonitorPage />} />
+        <Route path="/rag-test" element={<RagTestPage />} />
       </Routes>
     </Router>
   );
