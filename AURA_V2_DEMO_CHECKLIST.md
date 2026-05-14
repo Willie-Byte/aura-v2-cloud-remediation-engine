@@ -16,6 +16,8 @@ Aura V2 currently demonstrates:
 - Source-code filter options in the RAG API and frontend
 - RAG health, query, and answer endpoints
 - Frontend RAG test console
+- Polished RAG preset cards for fast demos
+- Active preset highlighting in the RAG UI
 - Clear safety boundaries between local RAG, Kafka, AKS, eBPF, and production remediation
 
 ## 1. Start From a Clean Main Branch
@@ -41,11 +43,11 @@ nothing to commit, working tree clean
 The latest commits should include recent work such as:
 
 ```text
+Merge pull request #6 from Willie-Byte/feature/rag-ui-presets
+Update Aura V2 demo checklist with source code RAG
 Merge pull request #5 from Willie-Byte/feature/rag-source-code-filters
 Merge pull request #4 from Willie-Byte/feature/rag-source-code-ingestion
 Add Aura V2 demo checklist
-Add Qdrant client dependency for local RAG
-Merge pull request #3 from Willie-Byte/feature/vector-rag-clean
 ```
 
 ## 2. Use the Correct Node Version
@@ -132,7 +134,7 @@ Expected response should include:
 "chatModel":"gpt-4o-mini"
 ```
 
-The supported filters should now include:
+The supported filters should include:
 
 ```text
 source-code
@@ -365,7 +367,61 @@ REACT_APP_API_URL=http://localhost:5001/api
 
 Restart the React dev server after changing `.env`.
 
-## 13. Frontend RAG Demo Questions
+## 13. Use the RAG Preset Cards
+
+The RAG test page now includes polished demo preset cards above the question form.
+
+Use these presets for fast demos:
+
+```text
+Kafka Source Search
+RAG Routes Search
+Qdrant Config Search
+Worker Validation Search
+Safety Boundary Search
+Telemetry/Tetragon Search
+```
+
+Each preset automatically fills in:
+
+```text
+Question
+Document Type
+Project Area
+Tag
+Result Limit
+```
+
+When a preset is selected, it should visually highlight as the active preset.
+
+Recommended demo flow:
+
+1. Click `Kafka Source Search`.
+2. Confirm the question becomes:
+
+```text
+Where is Kafka initialized?
+```
+
+3. Confirm the filters become:
+
+```text
+Document Type: source-code
+Project Area: aura-streaming
+Tag: kafka
+```
+
+4. Click `Ask RAG`.
+5. Confirm the sources include Kafka-related source-code chunks such as:
+
+```text
+backend/streaming/kafkaClient.js
+backend/streaming/producer.js
+```
+
+Use the preset cards when presenting Aura because they make the RAG demo faster, cleaner, and less error-prone.
+
+## 14. Frontend RAG Demo Questions
 
 Use the RAG test page at:
 
@@ -447,7 +503,7 @@ Project Area: aura-telemetry
 Tag: tetragon
 ```
 
-## 14. Frontend Source-Code RAG Demo Questions
+## 15. Frontend Source-Code RAG Demo Questions
 
 Use these to prove Aura can answer implementation-level questions.
 
@@ -541,7 +597,7 @@ backend/streaming/validator.js
 backend/streaming/remediationPolicy.js
 ```
 
-## 15. Test Kafka Stability
+## 16. Test Kafka Stability
 
 Open Terminal 2:
 
@@ -567,7 +623,7 @@ Control + C
 
 There should be no `TimeoutNegativeWarning` when using Node 22.
 
-## 16. Optional Streaming Demo
+## 17. Optional Streaming Demo
 
 Run from the backend folder:
 
@@ -612,7 +668,7 @@ Expected result:
 - audit event is published
 - execution result has `status: rejected`
 
-## 17. RAG-Only Demo Safety Settings
+## 18. RAG-Only Demo Safety Settings
 
 For a RAG-only demo, keep this in `backend/.env`:
 
@@ -626,7 +682,7 @@ RAG_CHAT_MODEL=gpt-4o-mini
 
 Do not commit real `.env` files.
 
-## 18. Safety Boundaries To Explain During Demo
+## 19. Safety Boundaries To Explain During Demo
 
 Aura V2 is intentionally conservative.
 
@@ -643,17 +699,17 @@ For the current demo:
 - Rust eBPF enforcement work stays separate from RAG
 - Terraform apply mode is not production-ready
 
-## 19. Good Demo Explanation
+## 20. Good Demo Explanation
 
 Use this short explanation:
 
 ```text
 Aura V2 is an event-driven cloud remediation prototype. It uses Kafka to separate threat intake, AI-assisted remediation planning, validation, execution results, approval decisions, DLQ handling, and audit events. The system is safety-first, so real execution is blocked behind policy validation, simulation mode, and future approval controls.
 
-The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. This lets the system explain its own architecture, safety boundaries, remediation policy, Kafka flow, telemetry plan, and implementation details without connecting RAG to live infrastructure yet.
+The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches without manually setting every filter.
 ```
 
-## 20. Troubleshooting
+## 21. Troubleshooting
 
 ### RAG health returns 404
 
@@ -703,6 +759,30 @@ Check `backend/package.json` and confirm it contains:
 "rag:ingest:source": "node scripts/ingestSourceCodeForRag.js",
 "rag:search": "node scripts/searchRagDocuments.js"
 ```
+
+### RAG preset cards do not appear
+
+Make sure you pulled the latest `main` and restarted the React dev server:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+git checkout main
+git pull
+cd client
+npm start
+```
+
+Then open:
+
+```text
+http://localhost:3000/rag-test
+```
+
+### Preset card does not highlight
+
+Refresh the browser page and click the preset again.
+
+The active preset should use the `rag-preset-button-active` class.
 
 ### Qdrant is not reachable
 
@@ -787,7 +867,7 @@ Verify:
 ps aux | grep "streaming" | grep -v grep
 ```
 
-## 21. Final Clean Check
+## 22. Final Clean Check
 
 Run:
 
@@ -808,33 +888,36 @@ nothing to commit, working tree clean
 Latest commits should include:
 
 ```text
+Merge pull request #6 from Willie-Byte/feature/rag-ui-presets
+Update Aura V2 demo checklist with source code RAG
 Merge pull request #5 from Willie-Byte/feature/rag-source-code-filters
 Merge pull request #4 from Willie-Byte/feature/rag-source-code-ingestion
 Add Aura V2 demo checklist
-Add Qdrant client dependency for local RAG
-Merge pull request #3 from Willie-Byte/feature/vector-rag-clean
 ```
 
-## 22. Recommended Next Branch
+## 23. Recommended Next Branch
 
 Next engineering branch:
 
 ```text
-feature/rag-answer-source-mode
+feature/rag-source-badges
 ```
 
 Goal:
 
-Improve the RAG answer endpoint and frontend so Aura can make it clearer when an answer came from:
+Improve the RAG sources and retrieved chunks UI so Aura can make it clearer when an answer came from:
 
 - architecture documents
 - source-code chunks
+- streaming documentation
+- policy documentation
+- telemetry documentation
 - mixed architecture and source-code results
 
 Possible improvements:
 
 - Add a visible `ingestionType` field to returned results
 - Show `source-code` chunks with a code-focused badge
-- Add a quick preset for source-code searches
-- Add a quick preset for architecture-only searches
-- Add a frontend toggle for vs. 
+- Show `architecture`, `streaming`, `policy`, and `telemetry` badges
+- Add clearer visual separation between documentation answers and source-code answers
+- Keep the current preset cards as the fast demo entry point
