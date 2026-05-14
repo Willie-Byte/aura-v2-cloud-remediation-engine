@@ -11,15 +11,48 @@ const { SecretClient } = require("@azure/keyvault-secrets");
 let kafkaInstance = null;
 let kafkaConfigPromise = null;
 
+const DEFAULT_KAFKA_LOG_LEVEL = "WARN";
+
 function shouldUseAzureKeyVault() {
   return String(process.env.USE_AZURE_KEY_VAULT).toLowerCase() === "true";
+}
+
+function getBooleanEnv(name, defaultValue = false) {
+  const value = process.env[name];
+
+  if (value === undefined || value === null || value === "") {
+    return defaultValue;
+  }
+
+  return ["true", "1", "yes", "y"].includes(String(value).toLowerCase());
+}
+
+function getNumberEnv(name, defaultValue) {
+  const rawValue = process.env[name];
+
+  if (rawValue === undefined || rawValue === null || rawValue === "") {
+    return defaultValue;
+  }
+
+  const parsedValue = Number(rawValue);
+
+  if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+    console.warn(
+      `[Kafka] Invalid numeric env value for ${name}: ${rawValue}. Using default ${defaultValue}.`
+    );
+    return defaultValue;
+  }
+
+  return parsedValue;
 }
 
 function requireEnv(name) {
   const value = process.env[name];
 
   if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
+    throw new Error(
+      `Missing required environment variable: ${name}. Check backend/streaming/.env or Azure Key Vault settings.`
+    );
   }
 
   return value;
@@ -46,7 +79,7 @@ function buildClientId() {
 
 function getKafkaLogLevel() {
   const configuredLevel = String(
-    process.env.KAFKA_LOG_LEVEL || "WARN"
+    process.env.KAFKA_LOG_LEVEL || DEFAULT_KAFKA_LOG_LEVEL
   ).toUpperCase();
 
   const levels = {
@@ -60,16 +93,44 @@ function getKafkaLogLevel() {
   return levels[configuredLevel] ?? logLevel.WARN;
 }
 
+function shouldSuppressKafkaLog(message) {
+  const suppressConnectionNoise = getBooleanEnv(
+    "KAFKA_SUPPRESS_CONNECTION_NOISE",
+    true
+  );
+
+  const alwaysNoisyMessages = [
+    "Response without match",
+    "KafkaJS v2.0.0 switched default partitioner",
+  ];
+
+  const connectionNoiseMessages = [
+    "Connection error: read ECONNRESET",
+    "Client network socket disconnected before secure TLS connection was established",
+    "The coordinator is not aware of this member, re-joining the group",
+    "Response Heartbeat",
+    "Restarting the consumer",
+  ];
+
+  if (alwaysNoisyMessages.some((item) => message.includes(item))) {
+    return true;
+  }
+
+  if (
+    suppressConnectionNoise &&
+    connectionNoiseMessages.some((item) => message.includes(item))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 function createKafkaLogCreator() {
   return () => ({ namespace, level, label, log }) => {
     const message = log.message || "";
 
-    const noisyMessages = [
-      "Response without match",
-      "KafkaJS v2.0.0 switched default partitioner",
-    ];
-
-    if (noisyMessages.some((noisyMessage) => message.includes(noisyMessage))) {
+    if (shouldSuppressKafkaLog(message)) {
       return;
     }
 
@@ -168,6 +229,12 @@ async function loadKafkaConfig() {
   return kafkaConfigPromise;
 }
 
+function describeKafkaMode() {
+  return shouldUseAzureKeyVault()
+    ? "Azure Key Vault secrets"
+    : "local streaming/.env variables";
+}
+
 async function getKafkaInstance() {
   if (kafkaInstance) {
     return kafkaInstance;
@@ -179,22 +246,20 @@ async function getKafkaInstance() {
   kafkaInstance = new Kafka({
     clientId,
     brokers: [kafkaConfig.broker],
-    ssl: true,
+    ssl: getBooleanEnv("KAFKA_SSL", true),
     sasl: {
-      mechanism: "plain",
+      mechanism: process.env.KAFKA_SASL_MECHANISM || "plain",
       username: kafkaConfig.username,
       password: kafkaConfig.password,
     },
-    connectionTimeout: Number(process.env.KAFKA_CONNECTION_TIMEOUT_MS) || 15000,
-    authenticationTimeout:
-      Number(process.env.KAFKA_AUTH_TIMEOUT_MS) || 15000,
-    requestTimeout: Number(process.env.KAFKA_REQUEST_TIMEOUT_MS) || 45000,
+    connectionTimeout: getNumberEnv("KAFKA_CONNECTION_TIMEOUT_MS", 30000),
+    authenticationTimeout: getNumberEnv("KAFKA_AUTH_TIMEOUT_MS", 30000),
+    requestTimeout: getNumberEnv("KAFKA_REQUEST_TIMEOUT_MS", 60000),
+    enforceRequestTimeout: true,
     retry: {
-      retries: Number(process.env.KAFKA_RETRIES) || 10,
-      initialRetryTime:
-        Number(process.env.KAFKA_INITIAL_RETRY_TIME_MS) || 500,
-      maxRetryTime:
-        Number(process.env.KAFKA_MAX_RETRY_TIME_MS) || 30000,
+      retries: getNumberEnv("KAFKA_RETRIES", 5),
+      initialRetryTime: getNumberEnv("KAFKA_INITIAL_RETRY_TIME_MS", 1000),
+      maxRetryTime: getNumberEnv("KAFKA_MAX_RETRY_TIME_MS", 30000),
       factor: Number(process.env.KAFKA_RETRY_FACTOR) || 0.2,
       multiplier: Number(process.env.KAFKA_RETRY_MULTIPLIER) || 2,
     },
@@ -203,9 +268,7 @@ async function getKafkaInstance() {
   });
 
   console.log(
-    shouldUseAzureKeyVault()
-      ? `Kafka client initialized using Azure Key Vault secrets. clientId=${clientId}`
-      : `Kafka client initialized using local environment variables. clientId=${clientId}`
+    `[Kafka] Client initialized using ${describeKafkaMode()}. clientId=${clientId}`
   );
 
   return kafkaInstance;
@@ -223,6 +286,7 @@ function producer(producerConfig = {}) {
         createPartitioner: Partitioners.LegacyPartitioner,
         allowAutoTopicCreation: false,
         idempotent: false,
+        maxInFlightRequests: getNumberEnv("KAFKA_PRODUCER_MAX_IN_FLIGHT", 1),
         ...producerConfig,
       });
     }
@@ -272,13 +336,22 @@ function consumer(consumerConfig = {}) {
       const kafka = await getKafkaInstance();
 
       consumerInstance = kafka.consumer({
-        sessionTimeout:
-          Number(process.env.KAFKA_SESSION_TIMEOUT_MS) || 30000,
-        heartbeatInterval:
-          Number(process.env.KAFKA_HEARTBEAT_INTERVAL_MS) || 3000,
-        rebalanceTimeout:
-          Number(process.env.KAFKA_REBALANCE_TIMEOUT_MS) || 60000,
+        sessionTimeout: getNumberEnv("KAFKA_SESSION_TIMEOUT_MS", 45000),
+        heartbeatInterval: getNumberEnv("KAFKA_HEARTBEAT_INTERVAL_MS", 5000),
+        rebalanceTimeout: getNumberEnv("KAFKA_REBALANCE_TIMEOUT_MS", 90000),
+        maxWaitTimeInMs: getNumberEnv("KAFKA_MAX_WAIT_TIME_MS", 5000),
         allowAutoTopicCreation: false,
+        retry: {
+          retries: getNumberEnv("KAFKA_CONSUMER_RETRIES", 5),
+          initialRetryTime: getNumberEnv(
+            "KAFKA_CONSUMER_INITIAL_RETRY_TIME_MS",
+            1000
+          ),
+          maxRetryTime: getNumberEnv("KAFKA_CONSUMER_MAX_RETRY_TIME_MS", 30000),
+          factor: Number(process.env.KAFKA_CONSUMER_RETRY_FACTOR) || 0.2,
+          multiplier:
+            Number(process.env.KAFKA_CONSUMER_RETRY_MULTIPLIER) || 2,
+        },
         ...consumerConfig,
       });
     }
@@ -304,7 +377,15 @@ function consumer(consumerConfig = {}) {
 
     async run(payload) {
       const consumerClient = await getConsumerInstance();
-      return consumerClient.run(payload);
+
+      return consumerClient.run({
+        autoCommit: true,
+        partitionsConsumedConcurrently: getNumberEnv(
+          "KAFKA_PARTITIONS_CONSUMED_CONCURRENTLY",
+          1
+        ),
+        ...payload,
+      });
     },
 
     async stop() {
