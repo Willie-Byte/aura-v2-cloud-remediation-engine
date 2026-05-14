@@ -26,6 +26,9 @@ app.use(
   require("./routes/streamingApprovalRoutes")
 );
 
+// Local Vector RAG routes
+app.use("/api/rag", require("./routes/ragRoutes"));
+
 // Test route
 app.get("/", (req, res) => {
   res.send("Aura backend is running...");

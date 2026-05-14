@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || "http://localhost:5001/api",
+  baseURL: process.env.REACT_APP_API_URL || "/api",
 });
 
 export const getAlerts = () => API.get("/alerts");
@@ -35,5 +35,14 @@ export const getStreamingExecutionResults = () =>
 
 export const sendStreamingApprovalDecision = (decisionPayload) =>
   API.post("/streaming-approvals/decision", decisionPayload);
+
+// Local Vector RAG API
+export const getRagHealth = () => API.get("/rag/health");
+
+export const queryRag = (queryPayload) =>
+  API.post("/rag/query", queryPayload);
+
+export const answerRagQuestion = (queryPayload) =>
+  API.post("/rag/answer", queryPayload);
 
 export default API;
