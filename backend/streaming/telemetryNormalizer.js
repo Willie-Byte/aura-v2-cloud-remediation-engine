@@ -10,6 +10,14 @@ const producer = kafka.producer();
 
 function mapTelemetryToIssueType(telemetry) {
   if (
+    telemetry.eventType === "process_exec" &&
+    telemetry.resourceType === "aksPod" &&
+    telemetry.issueType === "unauthorizedPodExec"
+  ) {
+    return "unauthorizedPodExec";
+  }
+
+  if (
     telemetry.eventType === "network_exposure_detected" &&
     telemetry.resourceType === "networkSecurityGroup" &&
     telemetry.observedPort === 22 &&
@@ -79,6 +87,10 @@ function getThreatDescription(issueType, telemetry) {
     publicStorageAccess: "Storage account allows public access.",
     unencryptedDatabase: "SQL database encryption is not enabled.",
     weakTlsVersion: "App Service allows weak TLS versions below TLS 1.2.",
+    unauthorizedPodExec:
+      `AKS pod ${telemetry.resourceName || "unknown"} executed suspicious process ${
+        telemetry.binary || "unknown"
+      } ${telemetry.arguments || ""}.`,
     nonQuantumSafeCrypto:
       `Resource uses non-quantum-safe cryptography. Current profile: ${
         telemetry.encryptionProfile || "classical-only"
@@ -192,4 +204,12 @@ async function runTelemetryNormalizer() {
   }
 }
 
-runTelemetryNormalizer();
+if (require.main === module) {
+  runTelemetryNormalizer();
+}
+
+module.exports = {
+  buildThreatFromTelemetry,
+  getThreatDescription,
+  mapTelemetryToIssueType,
+};
