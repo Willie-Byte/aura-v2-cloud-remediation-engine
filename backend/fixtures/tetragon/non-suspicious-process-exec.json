@@ -1,0 +1,20 @@
+{
+  "time": "2026-05-17T16:01:00Z",
+  "node_name": "aks-nodepool1-12345678-vmss000001",
+  "process_exec": {
+    "process": {
+      "binary": "/usr/bin/sleep",
+      "arguments": "30",
+      "pod": {
+        "namespace": "default",
+        "name": "normal-pod",
+        "container": {
+          "name": "normal-container",
+          "image": {
+            "name": "busybox:latest"
+          }
+        }
+      }
+    }
+  }
+}
