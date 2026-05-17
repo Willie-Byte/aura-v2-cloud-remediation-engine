@@ -26,6 +26,7 @@ Aura V2 currently demonstrates:
 - Local Tetragon bridge log replay test with tracked `.jsonl` fixture events
 - Local Tetragon bridge mock publisher test for Kafka payload shape
 - Tetragon AKS deployment guide for safe live bridge rollout
+- Tetragon AKS validation checklist for controlled live bridge testing
 - Clear safety boundaries between local RAG, Kafka, AKS, eBPF, and production remediation
 
 ## 1. Start From a Clean Main Branch
@@ -51,11 +52,11 @@ nothing to commit, working tree clean
 The latest commits should include recent work such as:
 
 ```text
+Merge pull request #23 from Willie-Byte/feature/tetragon-aks-validation-checklist
+Merge pull request #22 from Willie-Byte/docs/update-checklist-tetragon-aks-guide
 Merge pull request #21 from Willie-Byte/feature/tetragon-aks-deployment-docs
 Merge pull request #20 from Willie-Byte/docs/update-checklist-tetragon-mock-publisher
 Merge pull request #19 from Willie-Byte/feature/tetragon-bridge-mock-publisher
-Merge pull request #18 from Willie-Byte/docs/fix-checklist-tetragon-replay
-Merge pull request #17 from Willie-Byte/docs/update-checklist-tetragon-replay
 ```
 
 ## 2. Use the Correct Node Version
@@ -1098,7 +1099,59 @@ The safe order remains:
 8. only then consider broader automation
 
 
-## 25. RAG-Only Demo Safety Settings
+## 25. Verify Tetragon AKS Validation Checklist
+
+PR #23 added a controlled AKS validation checklist for testing the clean Tetragon bridge safely.
+
+Checklist file:
+
+```text
+backend/docs/tetragon-aks-validation-checklist.md
+```
+
+This checklist is for validation only. It should not enable production remediation actions.
+
+It covers:
+
+- local safety tests before AKS validation
+- Kubernetes context and node checks
+- Aura namespace checks
+- `aura-config` ConfigMap checks
+- `aura-secrets` Secret checks
+- Tetragon running checks
+- bridge DaemonSet apply and rollout verification
+- bridge startup log validation
+- controlled suspicious process event validation
+- raw telemetry verification
+- approval flow separation
+- cleanup and completion criteria
+
+Verify the checklist exists:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+
+ls backend/docs/tetragon-aks-validation-checklist.md
+grep -n "Aura Tetragon AKS Validation Checklist" backend/docs/tetragon-aks-validation-checklist.md
+grep -n "npm run test:tetragon:mock-publisher" backend/docs/tetragon-aks-validation-checklist.md
+grep -n "No production remediation action was enabled" backend/docs/tetragon-aks-validation-checklist.md
+```
+
+Expected:
+
+```text
+backend/docs/tetragon-aks-validation-checklist.md
+1:# Aura Tetragon AKS Validation Checklist
+```
+
+Safety note:
+
+```text
+This checklist validates the bridge without enabling production remediation actions.
+```
+
+
+## 26. RAG-Only Demo Safety Settings
 
 For a RAG-only demo, keep this in `backend/.env`:
 
@@ -1112,7 +1165,7 @@ RAG_CHAT_MODEL=gpt-4o-mini
 
 Do not commit real `.env` files.
 
-## 26. Safety Boundaries To Explain During Demo
+## 27. Safety Boundaries To Explain During Demo
 
 Aura V2 is intentionally conservative.
 
@@ -1130,21 +1183,22 @@ For the current demo:
 - The local Tetragon replay test can validate newline-delimited Tetragon events before live AKS deployment
 - The local Tetragon mock publisher test can validate Kafka payload shape before live Kafka publishing
 - The Tetragon AKS deployment guide documents controlled live bridge rollout steps
+- The Tetragon AKS validation checklist documents live validation without production remediation
 - The system should not connect RAG directly to live Tetragon events yet
 - Rust eBPF enforcement work stays separate from RAG
 - Terraform apply mode is not production-ready
 
-## 27. Good Demo Explanation
+## 28. Good Demo Explanation
 
 Use this short explanation:
 
 ```text
 Aura V2 is an event-driven cloud remediation prototype. It uses Kafka to separate threat intake, AI-assisted remediation planning, validation, execution results, approval decisions, DLQ handling, and audit events. The system is safety-first, so real execution is blocked behind policy validation, simulation mode, and future approval controls.
 
-The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, and an AKS deployment guide so suspicious eBPF process events can be validated safely before live AKS or live Kafka testing.
+The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, and an AKS validation checklist so suspicious eBPF process events can be validated safely before live AKS or live Kafka testing.
 ```
 
-## 28. Troubleshooting
+## 29. Troubleshooting
 
 ### RAG health returns 404
 
@@ -1363,6 +1417,30 @@ Expected result:
 
 This test should not require a real Kafka cluster.
 
+### Tetragon AKS validation checklist does not appear
+
+Make sure PR #23 is included in your local `main` branch:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+git checkout main
+git pull
+git log --oneline -5
+```
+
+The recent commits should include:
+
+```text
+Merge pull request #23 from Willie-Byte/feature/tetragon-aks-validation-checklist
+```
+
+Then verify the checklist exists:
+
+```bash
+ls backend/docs/tetragon-aks-validation-checklist.md
+grep -n "Aura Tetragon AKS Validation Checklist" backend/docs/tetragon-aks-validation-checklist.md
+```
+
 ### Tetragon AKS deployment guide does not appear
 
 Make sure PR #21 is included in your local `main` branch:
@@ -1515,7 +1593,7 @@ Verify:
 ps aux | grep "streaming" | grep -v grep
 ```
 
-## 29. Final Clean Check
+## 30. Final Clean Check
 
 Run:
 
@@ -1536,31 +1614,30 @@ nothing to commit, working tree clean
 Latest commits should include:
 
 ```text
+Merge pull request #23 from Willie-Byte/feature/tetragon-aks-validation-checklist
+Merge pull request #22 from Willie-Byte/docs/update-checklist-tetragon-aks-guide
 Merge pull request #21 from Willie-Byte/feature/tetragon-aks-deployment-docs
 Merge pull request #20 from Willie-Byte/docs/update-checklist-tetragon-mock-publisher
 Merge pull request #19 from Willie-Byte/feature/tetragon-bridge-mock-publisher
-Merge pull request #18 from Willie-Byte/docs/fix-checklist-tetragon-replay
-Merge pull request #17 from Willie-Byte/docs/update-checklist-tetragon-replay
 ```
 
-## 30. Recommended Next Branch
+## 31. Recommended Next Branch
 
 Next engineering branch:
 
 ```text
-feature/tetragon-aks-validation-checklist
+feature/tetragon-telemetry-normalizer-docs
 ```
 
 Goal:
 
-Add a controlled validation checklist for testing the Tetragon bridge on AKS without enabling production remediation actions.
+Document the safe path from Tetragon `raw-telemetry` events into the telemetry normalizer without enabling production remediation actions.
 
 Possible improvements:
 
-- Add a controlled AKS validation checklist
-- Verify namespace, ConfigMap, Secret, and DaemonSet prerequisites
-- Verify Tetragon bridge pod startup logs
-- Verify controlled suspicious process event detection
-- Verify `raw-telemetry` publish behavior
-- Verify approval flow separately from live detection
+- Document the `raw-telemetry` topic expectation
+- Document telemetry normalizer startup checks
+- Document expected normalized event shape
+- Document logs to check after `unauthorizedPodExec`
+- Keep approval and remediation flows separate
 - Keep production remediation disabled
