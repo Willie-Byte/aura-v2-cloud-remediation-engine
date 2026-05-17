@@ -103,8 +103,12 @@ function classifyTetragonProcessExec(event) {
   };
 }
 
-async function publishTelemetry(telemetry) {
-  await producer.send({
+function buildKafkaMessageFromTelemetry(telemetry) {
+  if (!telemetry || !telemetry.resourceName) {
+    throw new Error("Telemetry must include resourceName.");
+  }
+
+  return {
     topic: RAW_TOPIC,
     messages: [
       {
@@ -112,7 +116,13 @@ async function publishTelemetry(telemetry) {
         value: JSON.stringify(telemetry),
       },
     ],
-  });
+  };
+}
+
+async function publishTelemetry(telemetry) {
+  const kafkaMessage = buildKafkaMessageFromTelemetry(telemetry);
+
+  await producer.send(kafkaMessage);
 
   console.log(
     `[tetragon-bridge] Published ${telemetry.issueType} to ${RAW_TOPIC}: ${telemetry.resourceName}`
@@ -228,6 +238,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  buildKafkaMessageFromTelemetry,
   classifyTetragonProcessExec,
   getPodFromProcess,
   getProcessFromTetragonEvent,
