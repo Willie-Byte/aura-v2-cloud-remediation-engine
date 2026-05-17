@@ -125,6 +125,22 @@ function buildThreatFromTelemetry(telemetry) {
   };
 }
 
+function buildKafkaMessageFromThreat(threat) {
+  if (!threat || !threat.resourceName) {
+    throw new Error("Threat must include resourceName.");
+  }
+
+  return {
+    topic: process.env.KAFKA_TOPIC,
+    messages: [
+      {
+        key: threat.resourceName,
+        value: JSON.stringify(threat),
+      },
+    ],
+  };
+}
+
 async function runTelemetryNormalizer() {
   try {
     await consumer.connect();
@@ -180,15 +196,7 @@ async function runTelemetryNormalizer() {
           return;
         }
 
-        await producer.send({
-          topic: process.env.KAFKA_TOPIC,
-          messages: [
-            {
-              key: threat.resourceName,
-              value: JSON.stringify(threat),
-            },
-          ],
-        });
+        await producer.send(buildKafkaMessageFromThreat(threat));
 
         console.log("Telemetry normalized into threat and published.");
         console.log(threat);
@@ -209,6 +217,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  buildKafkaMessageFromThreat,
   buildThreatFromTelemetry,
   getThreatDescription,
   mapTelemetryToIssueType,
