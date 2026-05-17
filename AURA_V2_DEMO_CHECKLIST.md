@@ -25,6 +25,7 @@ Aura V2 currently demonstrates:
 - Local Tetragon bridge classification test with fixture-based events
 - Local Tetragon bridge log replay test with tracked `.jsonl` fixture events
 - Local Tetragon bridge mock publisher test for Kafka payload shape
+- Tetragon AKS deployment guide for safe live bridge rollout
 - Clear safety boundaries between local RAG, Kafka, AKS, eBPF, and production remediation
 
 ## 1. Start From a Clean Main Branch
@@ -50,11 +51,11 @@ nothing to commit, working tree clean
 The latest commits should include recent work such as:
 
 ```text
+Merge pull request #21 from Willie-Byte/feature/tetragon-aks-deployment-docs
+Merge pull request #20 from Willie-Byte/docs/update-checklist-tetragon-mock-publisher
 Merge pull request #19 from Willie-Byte/feature/tetragon-bridge-mock-publisher
 Merge pull request #18 from Willie-Byte/docs/fix-checklist-tetragon-replay
 Merge pull request #17 from Willie-Byte/docs/update-checklist-tetragon-replay
-Merge pull request #16 from Willie-Byte/feature/tetragon-bridge-log-replay
-Merge pull request #15 from Willie-Byte/docs/update-checklist-tetragon-local-test
 ```
 
 ## 2. Use the Correct Node Version
@@ -1038,7 +1039,66 @@ npm run test:tetragon:mock-publisher
 All three tests should pass before moving toward live AKS or live Kafka testing.
 
 
-## 24. RAG-Only Demo Safety Settings
+## 24. Verify Tetragon AKS Deployment Guide
+
+PR #21 added a dedicated AKS deployment guide for the clean Tetragon bridge.
+
+Guide file:
+
+```text
+backend/docs/tetragon-aks-deployment.md
+```
+
+This guide documents the safe path for deploying the Tetragon bridge to AKS after local tests pass.
+
+It covers:
+
+- required local tests before live AKS deployment
+- DaemonSet overview
+- required `aura-config` ConfigMap
+- required `aura-secrets` Secret
+- Tetragon log hostPath expectations
+- rollout and pod verification commands
+- controlled suspicious process test guidance
+- approval helper script usage
+- troubleshooting and cleanup
+
+Verify the guide exists:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+
+ls backend/docs/tetragon-aks-deployment.md
+grep -n "Aura Tetragon AKS Deployment Guide" backend/docs/tetragon-aks-deployment.md
+grep -n "npm run test:tetragon:mock-publisher" backend/docs/tetragon-aks-deployment.md
+```
+
+Expected:
+
+```text
+backend/docs/tetragon-aks-deployment.md
+1:# Aura Tetragon AKS Deployment Guide
+```
+
+Safety note:
+
+```text
+Do not connect live Tetragon telemetry to production remediation actions yet.
+```
+
+The safe order remains:
+
+1. local classification test
+2. local replay test
+3. local mock publisher test
+4. controlled AKS bridge deployment
+5. controlled suspicious event test
+6. Kafka telemetry verification
+7. approval workflow verification
+8. only then consider broader automation
+
+
+## 25. RAG-Only Demo Safety Settings
 
 For a RAG-only demo, keep this in `backend/.env`:
 
@@ -1052,7 +1112,7 @@ RAG_CHAT_MODEL=gpt-4o-mini
 
 Do not commit real `.env` files.
 
-## 25. Safety Boundaries To Explain During Demo
+## 26. Safety Boundaries To Explain During Demo
 
 Aura V2 is intentionally conservative.
 
@@ -1069,21 +1129,22 @@ For the current demo:
 - The local Tetragon bridge classification test can validate suspicious-event detection before AKS deployment
 - The local Tetragon replay test can validate newline-delimited Tetragon events before live AKS deployment
 - The local Tetragon mock publisher test can validate Kafka payload shape before live Kafka publishing
+- The Tetragon AKS deployment guide documents controlled live bridge rollout steps
 - The system should not connect RAG directly to live Tetragon events yet
 - Rust eBPF enforcement work stays separate from RAG
 - Terraform apply mode is not production-ready
 
-## 26. Good Demo Explanation
+## 27. Good Demo Explanation
 
 Use this short explanation:
 
 ```text
 Aura V2 is an event-driven cloud remediation prototype. It uses Kafka to separate threat intake, AI-assisted remediation planning, validation, execution results, approval decisions, DLQ handling, and audit events. The system is safety-first, so real execution is blocked behind policy validation, simulation mode, and future approval controls.
 
-The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, and a mock Kafka publisher payload test so suspicious eBPF process events can be validated safely before live AKS or live Kafka testing.
+The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, and an AKS deployment guide so suspicious eBPF process events can be validated safely before live AKS or live Kafka testing.
 ```
 
-## 27. Troubleshooting
+## 28. Troubleshooting
 
 ### RAG health returns 404
 
@@ -1302,6 +1363,30 @@ Expected result:
 
 This test should not require a real Kafka cluster.
 
+### Tetragon AKS deployment guide does not appear
+
+Make sure PR #21 is included in your local `main` branch:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+git checkout main
+git pull
+git log --oneline -5
+```
+
+The recent commits should include:
+
+```text
+Merge pull request #21 from Willie-Byte/feature/tetragon-aks-deployment-docs
+```
+
+Then verify the guide exists:
+
+```bash
+ls backend/docs/tetragon-aks-deployment.md
+grep -n "Aura Tetragon AKS Deployment Guide" backend/docs/tetragon-aks-deployment.md
+```
+
 ### Tetragon bridge files do not appear
 
 Make sure PR #12 is included in your local `main` branch:
@@ -1430,7 +1515,7 @@ Verify:
 ps aux | grep "streaming" | grep -v grep
 ```
 
-## 28. Final Clean Check
+## 29. Final Clean Check
 
 Run:
 
@@ -1451,30 +1536,31 @@ nothing to commit, working tree clean
 Latest commits should include:
 
 ```text
+Merge pull request #21 from Willie-Byte/feature/tetragon-aks-deployment-docs
+Merge pull request #20 from Willie-Byte/docs/update-checklist-tetragon-mock-publisher
 Merge pull request #19 from Willie-Byte/feature/tetragon-bridge-mock-publisher
 Merge pull request #18 from Willie-Byte/docs/fix-checklist-tetragon-replay
 Merge pull request #17 from Willie-Byte/docs/update-checklist-tetragon-replay
-Merge pull request #16 from Willie-Byte/feature/tetragon-bridge-log-replay
-Merge pull request #15 from Willie-Byte/docs/update-checklist-tetragon-local-test
 ```
 
-## 29. Recommended Next Branch
+## 30. Recommended Next Branch
 
 Next engineering branch:
 
 ```text
-feature/tetragon-aks-deployment-docs
+feature/tetragon-aks-validation-checklist
 ```
 
 Goal:
 
-Document the safe path for deploying the clean Tetragon bridge to AKS after local classification, replay, and mock publisher tests pass.
+Add a controlled validation checklist for testing the Tetragon bridge on AKS without enabling production remediation actions.
 
 Possible improvements:
 
-- Document required Kubernetes namespace and secrets
-- Document expected `aura-config` and `aura-secrets` values
-- Document how to apply `backend/k8s/tetragon-bridge-daemonset.yaml`
-- Document how to verify bridge pod logs
-- Document how to trigger a controlled suspicious process event
-- Keep live AKS testing separate from local RAG testing
+- Add a controlled AKS validation checklist
+- Verify namespace, ConfigMap, Secret, and DaemonSet prerequisites
+- Verify Tetragon bridge pod startup logs
+- Verify controlled suspicious process event detection
+- Verify `raw-telemetry` publish behavior
+- Verify approval flow separately from live detection
+- Keep production remediation disabled
