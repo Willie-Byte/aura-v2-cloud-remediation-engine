@@ -1,0 +1,20 @@
+{
+  "time": "2026-05-17T16:00:00Z",
+  "node_name": "aks-nodepool1-12345678-vmss000001",
+  "process_exec": {
+    "process": {
+      "binary": "/bin/sh",
+      "arguments": "whoami",
+      "pod": {
+        "namespace": "default",
+        "name": "aura-ebpf-test",
+        "container": {
+          "name": "test-container",
+          "image": {
+            "name": "busybox:latest"
+          }
+        }
+      }
+    }
+  }
+}

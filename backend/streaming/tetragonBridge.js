@@ -214,13 +214,22 @@ async function shutdown() {
   process.exit(0);
 }
 
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+if (require.main === module) {
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
 
-start().catch(async (error) => {
-  console.error("[tetragon-bridge] Fatal startup error:", error);
-  try {
-    await producer.disconnect();
-  } catch (_) {}
-  process.exit(1);
-});
+  start().catch(async (error) => {
+    console.error("[tetragon-bridge] Fatal startup error:", error);
+    try {
+      await producer.disconnect();
+    } catch (_) {}
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  classifyTetragonProcessExec,
+  getPodFromProcess,
+  getProcessFromTetragonEvent,
+  isSuspiciousProcess,
+};

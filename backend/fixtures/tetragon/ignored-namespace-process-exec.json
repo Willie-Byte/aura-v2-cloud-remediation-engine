@@ -1,0 +1,20 @@
+{
+  "time": "2026-05-17T16:02:00Z",
+  "node_name": "aks-nodepool1-12345678-vmss000001",
+  "process_exec": {
+    "process": {
+      "binary": "/bin/bash",
+      "arguments": "id",
+      "pod": {
+        "namespace": "kube-system",
+        "name": "ignored-pod",
+        "container": {
+          "name": "ignored-container",
+          "image": {
+            "name": "busybox:latest"
+          }
+        }
+      }
+    }
+  }
+}
