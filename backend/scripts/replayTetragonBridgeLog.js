@@ -5,7 +5,7 @@ const { classifyTetragonProcessExec } = require("../streaming/tetragonBridge");
 
 const fixturePath =
   process.argv[2] ||
-  path.join(__dirname, "..", "fixtures", "tetragon", "sample-tetragon.log");
+  path.join(__dirname, "..", "fixtures", "tetragon", "sample-tetragon.jsonl");
 
 function assert(condition, message) {
   if (!condition) {
