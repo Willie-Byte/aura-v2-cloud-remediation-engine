@@ -27,6 +27,7 @@ Aura V2 currently demonstrates:
 - Local Tetragon bridge mock publisher test for Kafka payload shape
 - Tetragon AKS deployment guide for safe live bridge rollout
 - Tetragon AKS validation checklist for controlled live bridge testing
+- Tetragon telemetry normalizer flow documentation
 - Clear safety boundaries between local RAG, Kafka, AKS, eBPF, and production remediation
 
 ## 1. Start From a Clean Main Branch
@@ -52,11 +53,11 @@ nothing to commit, working tree clean
 The latest commits should include recent work such as:
 
 ```text
+Merge pull request #25 from Willie-Byte/feature/tetragon-telemetry-normalizer-docs
+Merge pull request #24 from Willie-Byte/docs/update-checklist-tetragon-aks-validation
 Merge pull request #23 from Willie-Byte/feature/tetragon-aks-validation-checklist
 Merge pull request #22 from Willie-Byte/docs/update-checklist-tetragon-aks-guide
 Merge pull request #21 from Willie-Byte/feature/tetragon-aks-deployment-docs
-Merge pull request #20 from Willie-Byte/docs/update-checklist-tetragon-mock-publisher
-Merge pull request #19 from Willie-Byte/feature/tetragon-bridge-mock-publisher
 ```
 
 ## 2. Use the Correct Node Version
@@ -1151,7 +1152,58 @@ This checklist validates the bridge without enabling production remediation acti
 ```
 
 
-## 26. RAG-Only Demo Safety Settings
+## 26. Verify Tetragon Telemetry Normalizer Flow Doc
+
+PR #25 added documentation for the safe flow from Tetragon bridge telemetry into Aura's telemetry normalizer.
+
+Doc file:
+
+```text
+backend/docs/tetragon-telemetry-normalizer-flow.md
+```
+
+This doc explains:
+
+- Tetragon bridge publishes suspicious process events to `raw-telemetry`
+- telemetry normalizer consumes `KAFKA_RAW_TELEMETRY_TOPIC`
+- telemetry normalizer publishes supported threats to `KAFKA_TOPIC`
+- current limitation: `unauthorizedPodExec` is not mapped yet
+- expected behavior: unsupported Tetragon telemetry may be ignored safely
+- approval and remediation should remain separate from live detection
+- future branch should add explicit normalizer support and tests
+
+Verify the doc exists:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+
+ls backend/docs/tetragon-telemetry-normalizer-flow.md
+grep -n "Aura Tetragon Telemetry Normalizer Flow" backend/docs/tetragon-telemetry-normalizer-flow.md
+grep -n "unauthorizedPodExec" backend/docs/tetragon-telemetry-normalizer-flow.md
+grep -n "feature/tetragon-unauthorized-pod-exec-normalizer" backend/docs/tetragon-telemetry-normalizer-flow.md
+```
+
+Expected:
+
+```text
+backend/docs/tetragon-telemetry-normalizer-flow.md
+1:# Aura Tetragon Telemetry Normalizer Flow
+```
+
+Important current limitation:
+
+```text
+The Tetragon bridge can publish unauthorizedPodExec to raw-telemetry, but telemetryNormalizer.js does not yet convert unauthorizedPodExec into a supported threat.
+```
+
+Safe next engineering step:
+
+```text
+Add explicit unauthorizedPodExec mapping and fixture-based normalizer tests before connecting this path to approval or remediation.
+```
+
+
+## 27. RAG-Only Demo Safety Settings
 
 For a RAG-only demo, keep this in `backend/.env`:
 
@@ -1165,7 +1217,7 @@ RAG_CHAT_MODEL=gpt-4o-mini
 
 Do not commit real `.env` files.
 
-## 27. Safety Boundaries To Explain During Demo
+## 28. Safety Boundaries To Explain During Demo
 
 Aura V2 is intentionally conservative.
 
@@ -1184,21 +1236,22 @@ For the current demo:
 - The local Tetragon mock publisher test can validate Kafka payload shape before live Kafka publishing
 - The Tetragon AKS deployment guide documents controlled live bridge rollout steps
 - The Tetragon AKS validation checklist documents live validation without production remediation
+- The Tetragon telemetry normalizer flow doc explains the current unauthorizedPodExec mapping limitation
 - The system should not connect RAG directly to live Tetragon events yet
 - Rust eBPF enforcement work stays separate from RAG
 - Terraform apply mode is not production-ready
 
-## 28. Good Demo Explanation
+## 29. Good Demo Explanation
 
 Use this short explanation:
 
 ```text
 Aura V2 is an event-driven cloud remediation prototype. It uses Kafka to separate threat intake, AI-assisted remediation planning, validation, execution results, approval decisions, DLQ handling, and audit events. The system is safety-first, so real execution is blocked behind policy validation, simulation mode, and future approval controls.
 
-The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, and an AKS validation checklist so suspicious eBPF process events can be validated safely before live AKS or live Kafka testing.
+The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, an AKS validation checklist, and a telemetry normalizer flow doc so suspicious eBPF process events can be validated safely before live AKS or live Kafka testing.
 ```
 
-## 29. Troubleshooting
+## 30. Troubleshooting
 
 ### RAG health returns 404
 
@@ -1417,6 +1470,30 @@ Expected result:
 
 This test should not require a real Kafka cluster.
 
+### Tetragon telemetry normalizer flow doc does not appear
+
+Make sure PR #25 is included in your local `main` branch:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+git checkout main
+git pull
+git log --oneline -5
+```
+
+The recent commits should include:
+
+```text
+Merge pull request #25 from Willie-Byte/feature/tetragon-telemetry-normalizer-docs
+```
+
+Then verify the doc exists:
+
+```bash
+ls backend/docs/tetragon-telemetry-normalizer-flow.md
+grep -n "Aura Tetragon Telemetry Normalizer Flow" backend/docs/tetragon-telemetry-normalizer-flow.md
+```
+
 ### Tetragon AKS validation checklist does not appear
 
 Make sure PR #23 is included in your local `main` branch:
@@ -1593,7 +1670,7 @@ Verify:
 ps aux | grep "streaming" | grep -v grep
 ```
 
-## 30. Final Clean Check
+## 31. Final Clean Check
 
 Run:
 
@@ -1614,30 +1691,30 @@ nothing to commit, working tree clean
 Latest commits should include:
 
 ```text
+Merge pull request #25 from Willie-Byte/feature/tetragon-telemetry-normalizer-docs
+Merge pull request #24 from Willie-Byte/docs/update-checklist-tetragon-aks-validation
 Merge pull request #23 from Willie-Byte/feature/tetragon-aks-validation-checklist
 Merge pull request #22 from Willie-Byte/docs/update-checklist-tetragon-aks-guide
 Merge pull request #21 from Willie-Byte/feature/tetragon-aks-deployment-docs
-Merge pull request #20 from Willie-Byte/docs/update-checklist-tetragon-mock-publisher
-Merge pull request #19 from Willie-Byte/feature/tetragon-bridge-mock-publisher
 ```
 
-## 31. Recommended Next Branch
+## 32. Recommended Next Branch
 
 Next engineering branch:
 
 ```text
-feature/tetragon-telemetry-normalizer-docs
+feature/tetragon-unauthorized-pod-exec-normalizer
 ```
 
 Goal:
 
-Document the safe path from Tetragon `raw-telemetry` events into the telemetry normalizer without enabling production remediation actions.
+Add explicit telemetry normalizer support for Tetragon `unauthorizedPodExec` events with fixture-based tests, while keeping production remediation disabled.
 
 Possible improvements:
 
-- Document the `raw-telemetry` topic expectation
-- Document telemetry normalizer startup checks
-- Document expected normalized event shape
-- Document logs to check after `unauthorizedPodExec`
-- Keep approval and remediation flows separate
+- Add `unauthorizedPodExec` mapping in `mapTelemetryToIssueType`
+- Add threat description for `unauthorizedPodExec`
+- Add a local normalizer unit test using Tetragon telemetry fixtures
+- Confirm unsupported telemetry is still ignored safely
+- Confirm no approval or remediation action is triggered automatically
 - Keep production remediation disabled
