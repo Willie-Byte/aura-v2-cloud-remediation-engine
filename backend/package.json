@@ -31,7 +31,8 @@
     "rag:ingest:all": "npm run rag:ingest && npm run rag:ingest:source",
     "test:tetragon:bridge": "node scripts/testTetragonBridgeClassification.js",
     "test:tetragon:replay": "node scripts/replayTetragonBridgeLog.js",
-    "test:tetragon:mock-publisher": "node scripts/testTetragonBridgeMockPublisher.js"
+    "test:tetragon:mock-publisher": "node scripts/testTetragonBridgeMockPublisher.js",
+    "test:tetragon:normalizer": "node scripts/testTetragonTelemetryNormalizer.js"
   },
   "keywords": [],
   "author": "",
