@@ -22,6 +22,7 @@ Aura V2 currently demonstrates:
 - RAG answer source summary banner using `sourceSummary`
 - One-command RAG refresh with `npm run rag:ingest:all`
 - Clean Tetragon live telemetry bridge extracted from the old eBPF branch
+- Local Tetragon bridge classification test with fixture-based events
 - Clear safety boundaries between local RAG, Kafka, AKS, eBPF, and production remediation
 
 ## 1. Start From a Clean Main Branch
@@ -47,11 +48,11 @@ nothing to commit, working tree clean
 The latest commits should include recent work such as:
 
 ```text
+Merge pull request #14 from Willie-Byte/feature/tetragon-bridge-local-test
+Merge pull request #13 from Willie-Byte/docs/update-checklist-tetragon-bridge
 Merge pull request #12 from Willie-Byte/feature/tetragon-live-bridge-clean
 Merge pull request #11 from Willie-Byte/feature/rag-ingest-all-script
 Merge pull request #10 from Willie-Byte/docs/update-checklist-rag-source-summary
-Merge pull request #9 from Willie-Byte/feature/rag-answer-source-mode
-Merge pull request #8 from Willie-Byte/docs/update-checklist-rag-source-badges
 ```
 
 ## 2. Use the Correct Node Version
@@ -847,7 +848,56 @@ Expected mode should include executable permissions, such as:
 ```
 
 
-## 21. RAG-Only Demo Safety Settings
+## 21. Verify Local Tetragon Bridge Classification Test
+
+PR #14 added a safe local test path for the Tetragon bridge classification logic.
+
+This test does not require:
+
+- AKS
+- live Tetragon logs
+- a running DaemonSet
+- live pod execution
+- live Kafka publishing
+
+Files added:
+
+```text
+backend/scripts/testTetragonBridgeClassification.js
+backend/fixtures/tetragon/suspicious-process-exec.json
+backend/fixtures/tetragon/non-suspicious-process-exec.json
+backend/fixtures/tetragon/ignored-namespace-process-exec.json
+```
+
+The bridge file was also updated so it can be imported for testing without immediately starting Kafka or tailing a real Tetragon log file:
+
+```text
+backend/streaming/tetragonBridge.js
+```
+
+Run the local bridge classification test from the backend folder:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike/backend
+npm run test:tetragon:bridge
+```
+
+Expected output:
+
+```text
+[tetragon-bridge-test] Starting local classification tests...
+[tetragon-bridge-test] All local classification tests passed.
+```
+
+What the test verifies:
+
+- `/bin/sh whoami` in the `default` namespace is classified as `unauthorizedPodExec`
+- `/usr/bin/sleep 30` is ignored as non-suspicious
+- suspicious execution in `kube-system` is ignored because it is outside the monitored namespace
+- the classification logic works without live AKS or real Tetragon logs
+
+
+## 22. RAG-Only Demo Safety Settings
 
 For a RAG-only demo, keep this in `backend/.env`:
 
@@ -861,7 +911,7 @@ RAG_CHAT_MODEL=gpt-4o-mini
 
 Do not commit real `.env` files.
 
-## 22. Safety Boundaries To Explain During Demo
+## 23. Safety Boundaries To Explain During Demo
 
 Aura V2 is intentionally conservative.
 
@@ -875,21 +925,22 @@ For the current demo:
 - Production remediation execution is not enabled
 - The system should not modify live AKS resources
 - The clean Tetragon bridge can publish live eBPF telemetry to Kafka, but it should remain separate from the local RAG system
+- The local Tetragon bridge classification test can validate suspicious-event detection before AKS deployment
 - The system should not connect RAG directly to live Tetragon events yet
 - Rust eBPF enforcement work stays separate from RAG
 - Terraform apply mode is not production-ready
 
-## 23. Good Demo Explanation
+## 24. Good Demo Explanation
 
 Use this short explanation:
 
 ```text
 Aura V2 is an event-driven cloud remediation prototype. It uses Kafka to separate threat intake, AI-assisted remediation planning, validation, execution results, approval decisions, DLQ handling, and audit events. The system is safety-first, so real execution is blocked behind policy validation, simulation mode, and future approval controls.
 
-The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards and source type badges for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, or telemetry documents.
+The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge and a local fixture-based classification test so suspicious eBPF process events can be validated safely before live AKS testing.
 ```
 
-## 24. Troubleshooting
+## 25. Troubleshooting
 
 ### RAG health returns 404
 
@@ -938,7 +989,8 @@ Check `backend/package.json` and confirm it contains:
 "rag:ingest": "node scripts/ingestRagDocuments.js",
 "rag:ingest:source": "node scripts/ingestSourceCodeForRag.js",
 "rag:ingest:all": "npm run rag:ingest && npm run rag:ingest:source",
-"rag:search": "node scripts/searchRagDocuments.js"
+"rag:search": "node scripts/searchRagDocuments.js",
+"test:tetragon:bridge": "node scripts/testTetragonBridgeClassification.js"
 ```
 
 ### RAG preset cards do not appear
@@ -988,6 +1040,42 @@ rag-source-badge-architecture
 rag-source-badge-streaming
 rag-source-badge-policy
 rag-source-badge-telemetry
+```
+
+### Local Tetragon bridge test fails
+
+Run the test from the backend folder:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike/backend
+npm run test:tetragon:bridge
+```
+
+If the script is missing, verify that PR #14 is included in your local `main` branch:
+
+```bash
+git log --oneline -5
+```
+
+The recent commits should include:
+
+```text
+Merge pull request #14 from Willie-Byte/feature/tetragon-bridge-local-test
+```
+
+Then verify the test files exist:
+
+```bash
+ls backend/scripts/testTetragonBridgeClassification.js
+ls backend/fixtures/tetragon/suspicious-process-exec.json
+ls backend/fixtures/tetragon/non-suspicious-process-exec.json
+ls backend/fixtures/tetragon/ignored-namespace-process-exec.json
+```
+
+Expected test result:
+
+```text
+[tetragon-bridge-test] All local classification tests passed.
 ```
 
 ### Tetragon bridge files do not appear
@@ -1118,7 +1206,7 @@ Verify:
 ps aux | grep "streaming" | grep -v grep
 ```
 
-## 25. Final Clean Check
+## 26. Final Clean Check
 
 Run:
 
@@ -1139,30 +1227,30 @@ nothing to commit, working tree clean
 Latest commits should include:
 
 ```text
+Merge pull request #14 from Willie-Byte/feature/tetragon-bridge-local-test
+Merge pull request #13 from Willie-Byte/docs/update-checklist-tetragon-bridge
 Merge pull request #12 from Willie-Byte/feature/tetragon-live-bridge-clean
 Merge pull request #11 from Willie-Byte/feature/rag-ingest-all-script
 Merge pull request #10 from Willie-Byte/docs/update-checklist-rag-source-summary
-Merge pull request #9 from Willie-Byte/feature/rag-answer-source-mode
-Merge pull request #8 from Willie-Byte/docs/update-checklist-rag-source-badges
 ```
 
-## 26. Recommended Next Branch
+## 27. Recommended Next Branch
 
 Next engineering branch:
 
 ```text
-feature/tetragon-bridge-local-test
+feature/tetragon-bridge-log-replay
 ```
 
 Goal:
 
-Add a safe local or simulated test path for the Tetragon bridge before running it against live AKS.
+Add a local log replay test that feeds sample Tetragon JSON lines through the bridge flow before using live AKS logs.
 
 Possible improvements:
 
-- Add a sample Tetragon JSON event fixture
-- Add a script that feeds the sample event through `tetragonBridge.js` logic
-- Validate `unauthorizedPodExec` classification without requiring AKS
-- Confirm monitored namespace filtering works
-- Confirm non-suspicious events are ignored
-- Keep live AKS deployment separate from local testing
+- Add a sample newline-delimited Tetragon log file
+- Add a replay script that reads fixture log lines
+- Validate suspicious events are classified correctly
+- Validate ignored events do not publish telemetry
+- Optionally mock Kafka publishing instead of connecting to a real Kafka cluster
+- Keep live AKS deployment separate from local replay testing
