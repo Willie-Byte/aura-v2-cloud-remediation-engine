@@ -20,6 +20,8 @@ Aura V2 currently demonstrates:
 - Active preset highlighting in the RAG UI
 - RAG source type badges for source cards and retrieved chunks
 - RAG answer source summary banner using `sourceSummary`
+- One-command RAG refresh with `npm run rag:ingest:all`
+- Clean Tetragon live telemetry bridge extracted from the old eBPF branch
 - Clear safety boundaries between local RAG, Kafka, AKS, eBPF, and production remediation
 
 ## 1. Start From a Clean Main Branch
@@ -45,11 +47,11 @@ nothing to commit, working tree clean
 The latest commits should include recent work such as:
 
 ```text
+Merge pull request #12 from Willie-Byte/feature/tetragon-live-bridge-clean
+Merge pull request #11 from Willie-Byte/feature/rag-ingest-all-script
+Merge pull request #10 from Willie-Byte/docs/update-checklist-rag-source-summary
 Merge pull request #9 from Willie-Byte/feature/rag-answer-source-mode
 Merge pull request #8 from Willie-Byte/docs/update-checklist-rag-source-badges
-Merge pull request #7 from Willie-Byte/feature/rag-source-badges
-Update demo checklist with RAG UI presets
-Merge pull request #6 from Willie-Byte/feature/rag-ui-presets
 ```
 
 ## 2. Use the Correct Node Version
@@ -161,7 +163,29 @@ If this fails with `Cannot GET /api/rag/health`, make sure:
 
 ## 6. Re-Ingest RAG Documents If Needed
 
-Run from the backend folder:
+To refresh all local RAG content in one step, run from the backend folder:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike/backend
+npm run rag:ingest:all
+```
+
+This runs both document ingestion and source-code ingestion:
+
+```bash
+npm run rag:ingest
+npm run rag:ingest:source
+```
+
+Expected output should end with:
+
+```text
+Aura RAG ingestion complete.
+Aura source-code RAG ingestion complete.
+Total source-code chunks ingested: 259
+```
+
+To refresh only architecture and project documents, run:
 
 ```bash
 cd ~/Desktop/Aura-V2-Streaming-Spike/backend
@@ -185,6 +209,7 @@ aura-telemetry-ebpf-tetragon.md
 aura-rag-document-index.md
 ```
 
+
 ## 7. Ingest Source Code for RAG
 
 Aura can now ingest selected backend and frontend source-code files into Qdrant.
@@ -201,7 +226,7 @@ Expected output should include something like:
 ```text
 Starting Aura source-code RAG ingestion...
 Found 58 source files to ingest.
-Upserted 241 chunks into aura_rag_documents
+Upserted 259 chunks into aura_rag_documents
 Aura source-code RAG ingestion complete.
 ```
 
@@ -516,6 +541,7 @@ The backend response should also include a `sourceSummary` object:
 
 This makes the demo clearer because the viewer can immediately tell whether Aura answered from source code, documentation, or mixed retrieved context.
 
+
 ## 16. Frontend RAG Demo Questions
 
 Use the RAG test page at:
@@ -763,7 +789,65 @@ Expected result:
 - audit event is published
 - execution result has `status: rejected`
 
-## 20. RAG-Only Demo Safety Settings
+
+## 20. Verify Clean Tetragon Live Telemetry Bridge
+
+PR #12 added the clean Tetragon bridge files without merging the older `ebpf-tetragon-live` branch directly.
+
+Files added:
+
+```text
+backend/k8s/tetragon-bridge-daemonset.yaml
+backend/streaming/tetragonBridge.js
+backend/scripts/run-ebpf-approval-job.sh
+```
+
+What the bridge does:
+
+- Runs as a Kubernetes DaemonSet in the `aura` namespace
+- Tails Tetragon logs from `/var/run/cilium/tetragon/tetragon.log`
+- Watches monitored namespaces such as `default`
+- Detects suspicious process execution such as shells, curl, wget, netcat, Python, or commands like `whoami`, `uname`, `id`, `printenv`, and `cat /etc/passwd`
+- Converts suspicious Tetragon `process_exec` events into Aura telemetry
+- Publishes `unauthorizedPodExec` events to the Kafka `raw-telemetry` topic
+- Keeps live eBPF telemetry separate from the local RAG system
+
+Important safety note:
+
+```text
+Do not merge the old ebpf-tetragon-live branch directly.
+```
+
+That older branch was created before the polished RAG system and would remove or roll back important RAG files. The safe path is to extract only specific Tetragon files into clean branches created from current `main`.
+
+To confirm the bridge files exist:
+
+```bash
+ls backend/k8s/tetragon-bridge-daemonset.yaml
+ls backend/streaming/tetragonBridge.js
+ls backend/scripts/run-ebpf-approval-job.sh
+```
+
+Expected:
+
+```text
+All three files should exist.
+```
+
+The helper script should also be executable:
+
+```bash
+ls -l backend/scripts/run-ebpf-approval-job.sh
+```
+
+Expected mode should include executable permissions, such as:
+
+```text
+-rwxr-xr-x
+```
+
+
+## 21. RAG-Only Demo Safety Settings
 
 For a RAG-only demo, keep this in `backend/.env`:
 
@@ -777,7 +861,7 @@ RAG_CHAT_MODEL=gpt-4o-mini
 
 Do not commit real `.env` files.
 
-## 21. Safety Boundaries To Explain During Demo
+## 22. Safety Boundaries To Explain During Demo
 
 Aura V2 is intentionally conservative.
 
@@ -790,21 +874,22 @@ For the current demo:
 - Kafka is tested separately
 - Production remediation execution is not enabled
 - The system should not modify live AKS resources
+- The clean Tetragon bridge can publish live eBPF telemetry to Kafka, but it should remain separate from the local RAG system
 - The system should not connect RAG directly to live Tetragon events yet
 - Rust eBPF enforcement work stays separate from RAG
 - Terraform apply mode is not production-ready
 
-## 22. Good Demo Explanation
+## 23. Good Demo Explanation
 
 Use this short explanation:
 
 ```text
 Aura V2 is an event-driven cloud remediation prototype. It uses Kafka to separate threat intake, AI-assisted remediation planning, validation, execution results, approval decisions, DLQ handling, and audit events. The system is safety-first, so real execution is blocked behind policy validation, simulation mode, and future approval controls.
 
-The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context.
+The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards and source type badges for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, or telemetry documents.
 ```
 
-## 23. Troubleshooting
+## 24. Troubleshooting
 
 ### RAG health returns 404
 
@@ -852,6 +937,7 @@ Check `backend/package.json` and confirm it contains:
 "rag:test:qdrant": "node scripts/testQdrantConnection.js",
 "rag:ingest": "node scripts/ingestRagDocuments.js",
 "rag:ingest:source": "node scripts/ingestSourceCodeForRag.js",
+"rag:ingest:all": "npm run rag:ingest && npm run rag:ingest:source",
 "rag:search": "node scripts/searchRagDocuments.js"
 ```
 
@@ -904,48 +990,50 @@ rag-source-badge-policy
 rag-source-badge-telemetry
 ```
 
-### RAG answer source summary does not appear
+### Tetragon bridge files do not appear
 
-Make sure the latest backend and frontend changes are on `main`:
+Make sure PR #12 is included in your local `main` branch:
 
 ```bash
 cd ~/Desktop/Aura-V2-Streaming-Spike
 git checkout main
 git pull
+git log --oneline -5
 ```
 
-Restart the backend and frontend:
-
-```bash
-cd backend
-npm run dev
-```
-
-In another terminal:
-
-```bash
-cd client
-npm start
-```
-
-Then run `Kafka Source Search` from the RAG test page.
-
-The backend `/api/rag/answer` response should include:
+The recent commits should include:
 
 ```text
-sourceSummary
-source-code-only
-Answered from source-code chunks
+Merge pull request #12 from Willie-Byte/feature/tetragon-live-bridge-clean
 ```
 
-The frontend should include CSS classes like:
+Then verify the files:
+
+```bash
+ls backend/k8s/tetragon-bridge-daemonset.yaml
+ls backend/streaming/tetragonBridge.js
+ls backend/scripts/run-ebpf-approval-job.sh
+```
+
+### Tetragon bridge does not publish telemetry
+
+Check the bridge configuration first:
 
 ```text
-rag-source-summary
-rag-source-summary-source-code-only
-rag-source-summary-mixed-with-source-code
-rag-source-summary-mixed-documentation
+TETRAGON_LOG_PATH=/var/run/cilium/tetragon/tetragon.log
+TETRAGON_MONITORED_NAMESPACES=default
+TETRAGON_READ_FROM_START=false
+KAFKA_RAW_TELEMETRY_TOPIC=raw-telemetry
 ```
+
+Then check that:
+
+- Tetragon is installed and writing logs on the AKS node
+- The DaemonSet can mount `/var/run/cilium/tetragon`
+- The monitored namespace matches the pod namespace being tested
+- Kafka credentials are available through `aura-config` and `aura-secrets`
+- The `raw-telemetry` topic exists
+- The bridge logs show `[tetragon-bridge] Published unauthorizedPodExec`
 
 ### Qdrant is not reachable
 
@@ -1030,7 +1118,7 @@ Verify:
 ps aux | grep "streaming" | grep -v grep
 ```
 
-## 24. Final Clean Check
+## 25. Final Clean Check
 
 Run:
 
@@ -1051,31 +1139,30 @@ nothing to commit, working tree clean
 Latest commits should include:
 
 ```text
+Merge pull request #12 from Willie-Byte/feature/tetragon-live-bridge-clean
+Merge pull request #11 from Willie-Byte/feature/rag-ingest-all-script
+Merge pull request #10 from Willie-Byte/docs/update-checklist-rag-source-summary
 Merge pull request #9 from Willie-Byte/feature/rag-answer-source-mode
 Merge pull request #8 from Willie-Byte/docs/update-checklist-rag-source-badges
-Merge pull request #7 from Willie-Byte/feature/rag-source-badges
-Update demo checklist with RAG UI presets
-Merge pull request #6 from Willie-Byte/feature/rag-ui-presets
 ```
 
-## 25. Recommended Next Branch
+## 26. Recommended Next Branch
 
 Next engineering branch:
 
 ```text
-feature/rag-ingest-all-script
+feature/tetragon-bridge-local-test
 ```
 
 Goal:
 
-Add a single command that refreshes all RAG content in one step.
+Add a safe local or simulated test path for the Tetragon bridge before running it against live AKS.
 
 Possible improvements:
 
-- Add `npm run rag:ingest:all`
-- Run architecture/document ingestion
-- Run source-code ingestion
-- Print a clean success summary
-- Make the demo setup faster and less error-prone
-- Keep RAG ingestion local-only and avoid touching Kafka, AKS, Tetragon, or production remediation
-(base) wilsongaldamez@Wilsons-MacBook-Pro Aura-V2-Streaming-Spike % 
+- Add a sample Tetragon JSON event fixture
+- Add a script that feeds the sample event through `tetragonBridge.js` logic
+- Validate `unauthorizedPodExec` classification without requiring AKS
+- Confirm monitored namespace filtering works
+- Confirm non-suspicious events are ignored
+- Keep live AKS deployment separate from local testing
