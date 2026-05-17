@@ -24,6 +24,7 @@ Aura V2 currently demonstrates:
 - Clean Tetragon live telemetry bridge extracted from the old eBPF branch
 - Local Tetragon bridge classification test with fixture-based events
 - Local Tetragon bridge log replay test with tracked `.jsonl` fixture events
+- Local Tetragon bridge mock publisher test for Kafka payload shape
 - Clear safety boundaries between local RAG, Kafka, AKS, eBPF, and production remediation
 
 ## 1. Start From a Clean Main Branch
@@ -49,11 +50,11 @@ nothing to commit, working tree clean
 The latest commits should include recent work such as:
 
 ```text
+Merge pull request #19 from Willie-Byte/feature/tetragon-bridge-mock-publisher
+Merge pull request #18 from Willie-Byte/docs/fix-checklist-tetragon-replay
 Merge pull request #17 from Willie-Byte/docs/update-checklist-tetragon-replay
 Merge pull request #16 from Willie-Byte/feature/tetragon-bridge-log-replay
 Merge pull request #15 from Willie-Byte/docs/update-checklist-tetragon-local-test
-Merge pull request #14 from Willie-Byte/feature/tetragon-bridge-local-test
-Merge pull request #13 from Willie-Byte/docs/update-checklist-tetragon-bridge
 ```
 
 ## 2. Use the Correct Node Version
@@ -967,7 +968,77 @@ npm run test:tetragon:replay
 Both tests should pass before moving toward live AKS bridge testing.
 
 
-## 23. RAG-Only Demo Safety Settings
+## 23. Verify Local Tetragon Bridge Mock Publisher Test
+
+PR #19 added a local mock publisher test for the Tetragon bridge. This test verifies the Kafka publish payload shape without connecting to a real Kafka cluster.
+
+This mock publisher test does not require:
+
+- AKS
+- live Tetragon logs
+- a running DaemonSet
+- live pod execution
+- a real Kafka connection
+
+Files updated or added:
+
+```text
+backend/streaming/tetragonBridge.js
+backend/scripts/testTetragonBridgeMockPublisher.js
+backend/package.json
+```
+
+The bridge now exports a helper:
+
+```text
+buildKafkaMessageFromTelemetry
+```
+
+The backend package now includes:
+
+```json
+"test:tetragon:mock-publisher": "node scripts/testTetragonBridgeMockPublisher.js"
+```
+
+Run the mock publisher test from the backend folder:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike/backend
+npm run test:tetragon:mock-publisher
+```
+
+Expected output:
+
+```text
+[tetragon-mock-publisher-test] Starting mock publisher test...
+[tetragon-mock-publisher-test] Mock publisher test passed.
+```
+
+What the mock publisher test verifies:
+
+- Kafka topic is `raw-telemetry`
+- Kafka message key is `default/aura-ebpf-test`
+- Kafka message value is a JSON string
+- payload includes `issueType: unauthorizedPodExec`
+- payload includes `source: tetragon-ebpf`
+- payload includes `resourceType: aksPod`
+- payload includes `resourceName: default/aura-ebpf-test`
+- payload includes suspicious process details like `/bin/sh` and `whoami`
+- no real Kafka connection is required
+
+Recommended local Tetragon test flow:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike/backend
+npm run test:tetragon:bridge
+npm run test:tetragon:replay
+npm run test:tetragon:mock-publisher
+```
+
+All three tests should pass before moving toward live AKS or live Kafka testing.
+
+
+## 24. RAG-Only Demo Safety Settings
 
 For a RAG-only demo, keep this in `backend/.env`:
 
@@ -981,7 +1052,7 @@ RAG_CHAT_MODEL=gpt-4o-mini
 
 Do not commit real `.env` files.
 
-## 24. Safety Boundaries To Explain During Demo
+## 25. Safety Boundaries To Explain During Demo
 
 Aura V2 is intentionally conservative.
 
@@ -997,21 +1068,22 @@ For the current demo:
 - The clean Tetragon bridge can publish live eBPF telemetry to Kafka, but it should remain separate from the local RAG system
 - The local Tetragon bridge classification test can validate suspicious-event detection before AKS deployment
 - The local Tetragon replay test can validate newline-delimited Tetragon events before live AKS deployment
+- The local Tetragon mock publisher test can validate Kafka payload shape before live Kafka publishing
 - The system should not connect RAG directly to live Tetragon events yet
 - Rust eBPF enforcement work stays separate from RAG
 - Terraform apply mode is not production-ready
 
-## 25. Good Demo Explanation
+## 26. Good Demo Explanation
 
 Use this short explanation:
 
 ```text
 Aura V2 is an event-driven cloud remediation prototype. It uses Kafka to separate threat intake, AI-assisted remediation planning, validation, execution results, approval decisions, DLQ handling, and audit events. The system is safety-first, so real execution is blocked behind policy validation, simulation mode, and future approval controls.
 
-The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, and a `.jsonl` log replay test so suspicious eBPF process events can be validated safely before live AKS testing.
+The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, and a mock Kafka publisher payload test so suspicious eBPF process events can be validated safely before live AKS or live Kafka testing.
 ```
 
-## 26. Troubleshooting
+## 27. Troubleshooting
 
 ### RAG health returns 404
 
@@ -1062,7 +1134,8 @@ Check `backend/package.json` and confirm it contains:
 "rag:ingest:all": "npm run rag:ingest && npm run rag:ingest:source",
 "rag:search": "node scripts/searchRagDocuments.js",
 "test:tetragon:bridge": "node scripts/testTetragonBridgeClassification.js",
-"test:tetragon:replay": "node scripts/replayTetragonBridgeLog.js"
+"test:tetragon:replay": "node scripts/replayTetragonBridgeLog.js",
+"test:tetragon:mock-publisher": "node scripts/testTetragonBridgeMockPublisher.js"
 ```
 
 ### RAG preset cards do not appear
@@ -1192,6 +1265,43 @@ Expected replay result:
 
 If the fixture path points to `sample-tetragon.log`, update it to `sample-tetragon.jsonl`. The `.log` extension is ignored by the repository and should not be used for tracked test fixtures.
 
+### Local Tetragon mock publisher test fails
+
+Run the mock publisher test from the backend folder:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike/backend
+npm run test:tetragon:mock-publisher
+```
+
+If the script or helper is missing, verify that PR #19 is included in your local `main` branch:
+
+```bash
+git log --oneline -5
+```
+
+The recent commits should include:
+
+```text
+Merge pull request #19 from Willie-Byte/feature/tetragon-bridge-mock-publisher
+```
+
+Then verify the files and helper exist:
+
+```bash
+grep -n "buildKafkaMessageFromTelemetry" backend/streaming/tetragonBridge.js
+ls backend/scripts/testTetragonBridgeMockPublisher.js
+grep -n "test:tetragon:mock-publisher" backend/package.json
+```
+
+Expected result:
+
+```text
+[tetragon-mock-publisher-test] Mock publisher test passed.
+```
+
+This test should not require a real Kafka cluster.
+
 ### Tetragon bridge files do not appear
 
 Make sure PR #12 is included in your local `main` branch:
@@ -1320,7 +1430,7 @@ Verify:
 ps aux | grep "streaming" | grep -v grep
 ```
 
-## 27. Final Clean Check
+## 28. Final Clean Check
 
 Run:
 
@@ -1341,30 +1451,30 @@ nothing to commit, working tree clean
 Latest commits should include:
 
 ```text
+Merge pull request #19 from Willie-Byte/feature/tetragon-bridge-mock-publisher
+Merge pull request #18 from Willie-Byte/docs/fix-checklist-tetragon-replay
 Merge pull request #17 from Willie-Byte/docs/update-checklist-tetragon-replay
 Merge pull request #16 from Willie-Byte/feature/tetragon-bridge-log-replay
 Merge pull request #15 from Willie-Byte/docs/update-checklist-tetragon-local-test
-Merge pull request #14 from Willie-Byte/feature/tetragon-bridge-local-test
-Merge pull request #13 from Willie-Byte/docs/update-checklist-tetragon-bridge
 ```
 
-## 28. Recommended Next Branch
+## 29. Recommended Next Branch
 
 Next engineering branch:
 
 ```text
-feature/tetragon-bridge-mock-publisher
+feature/tetragon-aks-deployment-docs
 ```
 
 Goal:
 
-Add a safe mock publisher test for the Tetragon bridge so the bridge can verify the telemetry that would be sent to Kafka without connecting to a real Kafka cluster.
+Document the safe path for deploying the clean Tetragon bridge to AKS after local classification, replay, and mock publisher tests pass.
 
 Possible improvements:
 
-- Export or isolate a function that turns replayed Tetragon lines into publishable telemetry objects
-- Add a mock publisher that records would-publish messages in memory
-- Assert the correct Kafka topic would be used, such as `raw-telemetry`
-- Assert the correct message key would be used, such as `default/aura-ebpf-test`
-- Assert ignored events are not published
-- Keep live Kafka and AKS deployment separate from local publisher testing
+- Document required Kubernetes namespace and secrets
+- Document expected `aura-config` and `aura-secrets` values
+- Document how to apply `backend/k8s/tetragon-bridge-daemonset.yaml`
+- Document how to verify bridge pod logs
+- Document how to trigger a controlled suspicious process event
+- Keep live AKS testing separate from local RAG testing
