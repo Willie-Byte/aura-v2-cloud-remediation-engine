@@ -32,6 +32,7 @@ Aura V2 currently demonstrates:
 - Tetragon normalizer publisher payload test
 - Tetragon local end-to-end test for the full local pipeline
 - Tetragon local negative-path E2E test for ignored/non-suspicious events
+- Tetragon local all-tests command for the full safety suite
 - Clear safety boundaries between local RAG, Kafka, AKS, eBPF, and production remediation
 
 ## 1. Start From a Clean Main Branch
@@ -57,11 +58,11 @@ nothing to commit, working tree clean
 The latest commits should include recent work such as:
 
 ```text
+Merge pull request #35 from Willie-Byte/feature/tetragon-local-test-suite-script
+Merge pull request #34 from Willie-Byte/docs/update-checklist-tetragon-e2e-negative
 Merge pull request #33 from Willie-Byte/feature/tetragon-e2e-negative-path-test
 Merge pull request #32 from Willie-Byte/docs/update-checklist-tetragon-e2e
 Merge pull request #31 from Willie-Byte/feature/tetragon-local-end-to-end-test
-Merge pull request #30 from Willie-Byte/docs/update-checklist-tetragon-normalizer-publisher
-Merge pull request #29 from Willie-Byte/feature/tetragon-normalizer-publisher-test
 ```
 
 ## 2. Use the Correct Node Version
@@ -1489,7 +1490,59 @@ What this verifies:
 - no live Kafka, AKS, approval, worker, or production remediation connection is required
 
 
-## 31. RAG-Only Demo Safety Settings
+## 31. Verify Tetragon Local Test Suite Script
+
+PR #35 added a single command that runs the full local Tetragon safety suite.
+
+File updated:
+
+```text
+backend/package.json
+```
+
+The backend package now includes:
+
+```json
+"test:tetragon:all": "npm run test:tetragon:bridge && npm run test:tetragon:replay && npm run test:tetragon:mock-publisher && npm run test:tetragon:normalizer && npm run test:tetragon:normalizer-publisher && npm run test:tetragon:e2e && npm run test:tetragon:e2e-negative"
+```
+
+Verify the script exists:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+
+grep -n "test:tetragon:all" backend/package.json
+```
+
+Run the full local Tetragon suite:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike/backend
+
+npm run test:tetragon:all
+```
+
+Expected final result:
+
+```text
+[tetragon-bridge-test] All local classification tests passed.
+[tetragon-replay] Local replay test passed.
+[tetragon-mock-publisher-test] Mock publisher test passed.
+[tetragon-normalizer-test] Telemetry normalizer test passed.
+[tetragon-normalizer-publisher-test] Normalizer publisher test passed.
+[tetragon-e2e-test] Local end-to-end test passed.
+[tetragon-e2e-negative-test] Local negative-path test passed.
+```
+
+What this verifies:
+
+- the whole local Tetragon safety suite can run with one command
+- positive path is covered
+- negative path is covered
+- no live Kafka, AKS, approval, worker, or production remediation connection is required
+
+
+## 32. RAG-Only Demo Safety Settings
 
 For a RAG-only demo, keep this in `backend/.env`:
 
@@ -1503,7 +1556,7 @@ RAG_CHAT_MODEL=gpt-4o-mini
 
 Do not commit real `.env` files.
 
-## 32. Safety Boundaries To Explain During Demo
+## 33. Safety Boundaries To Explain During Demo
 
 Aura V2 is intentionally conservative.
 
@@ -1527,21 +1580,22 @@ For the current demo:
 - The Tetragon normalizer publisher test verifies safe local Kafka payload shape
 - The Tetragon local E2E test verifies the full local pipeline without live services
 - The Tetragon negative-path E2E test verifies ignored/non-suspicious events stay safe
+- The Tetragon all-tests script runs the full local suite with one command
 - The system should not connect RAG directly to live Tetragon events yet
 - Rust eBPF enforcement work stays separate from RAG
 - Terraform apply mode is not production-ready
 
-## 33. Good Demo Explanation
+## 34. Good Demo Explanation
 
 Use this short explanation:
 
 ```text
 Aura V2 is an event-driven cloud remediation prototype. It uses Kafka to separate threat intake, AI-assisted remediation planning, validation, execution results, approval decisions, DLQ handling, and audit events. The system is safety-first, so real execution is blocked behind policy validation, simulation mode, and future approval controls.
 
-The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, an AKS validation checklist, a telemetry normalizer flow doc, local unauthorizedPodExec normalizer support, a local normalizer publisher payload test, a full local E2E test, and a local negative-path E2E test so suspicious eBPF process events can be validated safely before live AKS or live Kafka testing.
+The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, an AKS validation checklist, a telemetry normalizer flow doc, local unauthorizedPodExec normalizer support, a local normalizer publisher payload test, a full local E2E test, a local negative-path E2E test, and a one-command local Tetragon safety suite so suspicious eBPF process events can be validated safely before live AKS or live Kafka testing.
 ```
 
-## 34. Troubleshooting
+## 35. Troubleshooting
 
 ### RAG health returns 404
 
@@ -1759,6 +1813,43 @@ Expected result:
 ```
 
 This test should not require a real Kafka cluster.
+
+### Tetragon all-tests script fails
+
+Run the full local suite from the backend folder:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike/backend
+
+npm run test:tetragon:all
+```
+
+If the script is missing, verify that PR #35 is included in your local `main` branch:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+git checkout main
+git pull
+git log --oneline -5
+```
+
+The recent commits should include:
+
+```text
+Merge pull request #35 from Willie-Byte/feature/tetragon-local-test-suite-script
+```
+
+Then verify the script exists:
+
+```bash
+grep -n "test:tetragon:all" backend/package.json
+```
+
+Expected result:
+
+```text
+[tetragon-e2e-negative-test] Local negative-path test passed.
+```
 
 ### Tetragon local E2E negative-path test fails
 
@@ -2132,7 +2223,7 @@ Verify:
 ps aux | grep "streaming" | grep -v grep
 ```
 
-## 35. Final Clean Check
+## 36. Final Clean Check
 
 Run:
 
@@ -2153,28 +2244,29 @@ nothing to commit, working tree clean
 Latest commits should include:
 
 ```text
+Merge pull request #35 from Willie-Byte/feature/tetragon-local-test-suite-script
+Merge pull request #34 from Willie-Byte/docs/update-checklist-tetragon-e2e-negative
 Merge pull request #33 from Willie-Byte/feature/tetragon-e2e-negative-path-test
 Merge pull request #32 from Willie-Byte/docs/update-checklist-tetragon-e2e
 Merge pull request #31 from Willie-Byte/feature/tetragon-local-end-to-end-test
-Merge pull request #30 from Willie-Byte/docs/update-checklist-tetragon-normalizer-publisher
-Merge pull request #29 from Willie-Byte/feature/tetragon-normalizer-publisher-test
 ```
 
-## 36. Recommended Next Branch
+## 37. Recommended Next Branch
 
 Next engineering branch:
 
 ```text
-feature/tetragon-local-test-suite-script
+feature/tetragon-ci-workflow
 ```
 
 Goal:
 
-Add one convenience script that runs the full local Tetragon safety test suite in order.
+Add a GitHub Actions workflow that runs the local Tetragon safety suite automatically on pull requests.
 
 Possible improvements:
 
-- Add `test:tetragon:all`
-- Run bridge classification, replay, mock publisher, normalizer, normalizer publisher, positive E2E, and negative E2E tests
-- Make local validation easier before PRs
+- Run `npm ci` or `npm install` in `backend`
+- Run `npm run test:tetragon:all`
+- Trigger on pull requests touching backend code
+- Keep tests local only
 - Keep live Kafka, AKS, approval, worker, and remediation disabled
