@@ -26,7 +26,66 @@ Expected:
 
 Do not continue to live AKS validation until all three tests pass.
 
-## 2. Confirm Current Kubernetes Context
+After the local tests pass, run the AKS dry-run helper before using any `kubectl apply` command.
+
+## 2. Run AKS Dry-Run Validation Helper
+
+PR #39 added a safe dry-run helper that checks AKS and Tetragon readiness before any live bridge apply step.
+
+Helper script:
+
+```text
+backend/scripts/tetragon-aks-dry-run-check.sh
+```
+
+This helper only checks readiness.
+
+It does NOT:
+
+```text
+apply manifests
+delete resources
+restart workloads
+run pod exec commands
+enable remediation
+```
+
+First verify the helper exists and is executable:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+
+ls -l backend/scripts/tetragon-aks-dry-run-check.sh
+grep -n "Aura Tetragon AKS Dry-Run Validation Check" backend/scripts/tetragon-aks-dry-run-check.sh
+grep -n "It does NOT apply manifests" backend/scripts/tetragon-aks-dry-run-check.sh
+grep -n "No production remediation action was enabled" backend/scripts/tetragon-aks-dry-run-check.sh
+```
+
+Run a local shell syntax check:
+
+```bash
+bash -n backend/scripts/tetragon-aks-dry-run-check.sh
+```
+
+Only after confirming your `kubectl` context points to the intended AKS cluster, run:
+
+```bash
+./backend/scripts/tetragon-aks-dry-run-check.sh
+```
+
+Expected result if all readiness checks pass:
+
+```text
+All dry-run checks passed.
+No production remediation action was enabled.
+```
+
+If the dry-run returns `WARN/FAIL`, stop and review the output before continuing.
+
+Do not apply the Tetragon bridge DaemonSet until this dry-run helper has been reviewed.
+
+
+## 3. Confirm Current Kubernetes Context
 
 Run:
 
@@ -44,7 +103,7 @@ AKS nodes should be Ready.
 
 Stop if the current context points to the wrong cluster.
 
-## 3. Confirm Aura Namespace Exists
+## 4. Confirm Aura Namespace Exists
 
 Run:
 
@@ -60,7 +119,7 @@ cd ~/Desktop/Aura-V2-Streaming-Spike/backend
 kubectl apply -f k8s/aura-namespace.yaml
 ```
 
-## 4. Confirm Aura ConfigMap and Secret Exist
+## 5. Confirm Aura ConfigMap and Secret Exist
 
 Run:
 
@@ -80,7 +139,7 @@ The Tetragon bridge DaemonSet uses both resources through `envFrom`.
 
 Do not commit real secret values.
 
-## 5. Confirm Tetragon Is Running
+## 6. Confirm Tetragon Is Running
 
 Run:
 
@@ -96,7 +155,7 @@ Tetragon pods should be running before the Aura bridge is deployed.
 
 If Tetragon is not installed or not running, stop here and fix Tetragon first.
 
-## 6. Confirm Bridge Manifest Exists
+## 7. Confirm Bridge Manifest Exists
 
 Run from the repo root:
 
@@ -112,7 +171,7 @@ Expected:
 backend/k8s/tetragon-bridge-daemonset.yaml
 ```
 
-## 7. Review Bridge Settings Before Apply
+## 8. Review Bridge Settings Before Apply
 
 Inspect the DaemonSet:
 
@@ -133,7 +192,9 @@ TETRAGON_READ_FROM_START=false
 
 If the test namespace is not `default`, update `TETRAGON_MONITORED_NAMESPACES` before applying.
 
-## 8. Apply the Bridge DaemonSet
+Before applying, confirm the dry-run helper has passed or that any `WARN/FAIL` items have been reviewed and accepted for this controlled validation.
+
+## 9. Apply the Bridge DaemonSet
 
 Run from the backend folder:
 
@@ -155,7 +216,7 @@ or:
 daemonset.apps/aura-tetragon-bridge configured
 ```
 
-## 9. Verify DaemonSet Rollout
+## 10. Verify DaemonSet Rollout
 
 Run:
 
@@ -181,7 +242,7 @@ Expected:
 Bridge pods should be Running.
 ```
 
-## 10. Check Bridge Startup Logs
+## 11. Check Bridge Startup Logs
 
 Run:
 
@@ -200,7 +261,7 @@ Expected logs should include:
 
 If the bridge says it is waiting for the log file, verify that Tetragon is writing logs on the node.
 
-## 11. Controlled Suspicious Event Test
+## 12. Controlled Suspicious Event Test
 
 Only run this in a safe test pod and monitored namespace.
 
@@ -229,7 +290,7 @@ Expected bridge log:
 [tetragon-bridge] Published unauthorizedPodExec to raw-telemetry
 ```
 
-## 12. Verify Raw Telemetry Pipeline Separately
+## 13. Verify Raw Telemetry Pipeline Separately
 
 The bridge publishes to:
 
@@ -253,7 +314,7 @@ The bridge should show a Published unauthorizedPodExec message.
 The telemetry normalizer should process the raw telemetry if it is running.
 ```
 
-## 13. Keep Approval Flow Separate
+## 14. Keep Approval Flow Separate
 
 Do not automatically approve live detections during bridge validation.
 
@@ -277,7 +338,7 @@ The helper script uses:
 k8s/approval-producer-job.yaml
 ```
 
-## 14. Failure Checks
+## 15. Failure Checks
 
 ### Bridge pod is stuck or crashing
 
@@ -325,7 +386,7 @@ If testing in `aura-lab`, the value should include:
 aura-lab
 ```
 
-## 15. Cleanup
+## 16. Cleanup
 
 Remove the bridge after validation if you do not need it running:
 
@@ -347,7 +408,7 @@ Expected:
 No resources found
 ```
 
-## 16. Validation Completion Criteria
+## 17. Validation Completion Criteria
 
 This validation is complete only when:
 
@@ -363,7 +424,7 @@ No production remediation action was enabled.
 Cleanup was completed if the bridge is not needed.
 ```
 
-## 17. Safe Next Step
+## 18. Safe Next Step
 
 After this validation checklist is complete, the next safe step is to document or test the telemetry normalizer path separately.
 
