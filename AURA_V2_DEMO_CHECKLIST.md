@@ -34,6 +34,7 @@ Aura V2 currently demonstrates:
 - Tetragon local negative-path E2E test for ignored/non-suspicious events
 - Tetragon local all-tests command for the full safety suite
 - Tetragon GitHub Actions CI workflow for local safety tests
+- Tetragon AKS dry-run validation helper
 - Clear safety boundaries between local RAG, Kafka, AKS, eBPF, and production remediation
 
 ## 1. Start From a Clean Main Branch
@@ -59,11 +60,11 @@ nothing to commit, working tree clean
 The latest commits should include recent work such as:
 
 ```text
+Merge pull request #39 from Willie-Byte/feature/tetragon-controlled-aks-validation-dry-run
+Merge pull request #38 from Willie-Byte/docs/update-checklist-tetragon-ci-workflow
 Merge pull request #37 from Willie-Byte/feature/tetragon-ci-workflow
 Merge pull request #36 from Willie-Byte/docs/update-checklist-tetragon-all-script
 Merge pull request #35 from Willie-Byte/feature/tetragon-local-test-suite-script
-Merge pull request #34 from Willie-Byte/docs/update-checklist-tetragon-e2e-negative
-Merge pull request #33 from Willie-Byte/feature/tetragon-e2e-negative-path-test
 ```
 
 ## 2. Use the Correct Node Version
@@ -1603,7 +1604,76 @@ What this verifies:
 - no live Kafka, AKS, approval, worker, or production remediation connection is required
 
 
-## 33. RAG-Only Demo Safety Settings
+## 33. Verify Tetragon AKS Dry-Run Validation Helper
+
+PR #39 added a safe AKS dry-run validation helper for the Tetragon bridge.
+
+Helper script:
+
+```text
+backend/scripts/tetragon-aks-dry-run-check.sh
+```
+
+This helper is designed to check readiness before live AKS validation.
+
+It checks:
+
+```text
+current Kubernetes context
+AKS node reachability
+aura namespace
+aura-config ConfigMap
+aura-secrets Secret
+Tetragon pods
+local Tetragon bridge manifest
+existing bridge DaemonSet status if already deployed
+existing bridge pods if already deployed
+```
+
+Safety boundary:
+
+```text
+It does NOT apply manifests.
+It does NOT delete resources.
+It does NOT run pod exec commands.
+It does NOT enable remediation.
+```
+
+Verify the script exists and is executable:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+
+ls -l backend/scripts/tetragon-aks-dry-run-check.sh
+grep -n "Aura Tetragon AKS Dry-Run Validation Check" backend/scripts/tetragon-aks-dry-run-check.sh
+grep -n "It does NOT apply manifests" backend/scripts/tetragon-aks-dry-run-check.sh
+grep -n "No production remediation action was enabled" backend/scripts/tetragon-aks-dry-run-check.sh
+```
+
+Run a local syntax check:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+
+bash -n backend/scripts/tetragon-aks-dry-run-check.sh
+```
+
+Optional live dry-run check:
+
+```bash
+./backend/scripts/tetragon-aks-dry-run-check.sh
+```
+
+Only run the live dry-run check after confirming your `kubectl` context points to the intended AKS cluster.
+
+What this verifies:
+
+- AKS readiness can be checked before applying the bridge DaemonSet
+- live deployment checks are separated from apply/delete/exec actions
+- no production remediation action is enabled
+
+
+## 34. RAG-Only Demo Safety Settings
 
 For a RAG-only demo, keep this in `backend/.env`:
 
@@ -1617,7 +1687,7 @@ RAG_CHAT_MODEL=gpt-4o-mini
 
 Do not commit real `.env` files.
 
-## 34. Safety Boundaries To Explain During Demo
+## 35. Safety Boundaries To Explain During Demo
 
 Aura V2 is intentionally conservative.
 
@@ -1643,21 +1713,22 @@ For the current demo:
 - The Tetragon negative-path E2E test verifies ignored/non-suspicious events stay safe
 - The Tetragon all-tests script runs the full local suite with one command
 - The Tetragon CI workflow runs the local suite automatically on backend PRs
+- The Tetragon AKS dry-run helper checks readiness before live validation
 - The system should not connect RAG directly to live Tetragon events yet
 - Rust eBPF enforcement work stays separate from RAG
 - Terraform apply mode is not production-ready
 
-## 35. Good Demo Explanation
+## 36. Good Demo Explanation
 
 Use this short explanation:
 
 ```text
 Aura V2 is an event-driven cloud remediation prototype. It uses Kafka to separate threat intake, AI-assisted remediation planning, validation, execution results, approval decisions, DLQ handling, and audit events. The system is safety-first, so real execution is blocked behind policy validation, simulation mode, and future approval controls.
 
-The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, an AKS validation checklist, a telemetry normalizer flow doc, local unauthorizedPodExec normalizer support, a local normalizer publisher payload test, a full local E2E test, a local negative-path E2E test, a one-command local Tetragon safety suite, and a GitHub Actions CI workflow so suspicious eBPF process events can be validated safely before live AKS or live Kafka testing.
+The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, an AKS validation checklist, a telemetry normalizer flow doc, local unauthorizedPodExec normalizer support, a local normalizer publisher payload test, a full local E2E test, a local negative-path E2E test, a one-command local Tetragon safety suite, a GitHub Actions CI workflow, and an AKS dry-run validation helper so suspicious eBPF process events can be validated safely before live AKS or live Kafka testing.
 ```
 
-## 36. Troubleshooting
+## 37. Troubleshooting
 
 ### RAG health returns 404
 
@@ -1875,6 +1946,38 @@ Expected result:
 ```
 
 This test should not require a real Kafka cluster.
+
+### Tetragon AKS dry-run helper does not appear
+
+Verify that PR #39 is included in your local `main` branch:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+git checkout main
+git pull
+git log --oneline -5
+```
+
+The recent commits should include:
+
+```text
+Merge pull request #39 from Willie-Byte/feature/tetragon-controlled-aks-validation-dry-run
+```
+
+Then verify the script exists:
+
+```bash
+ls -l backend/scripts/tetragon-aks-dry-run-check.sh
+grep -n "Aura Tetragon AKS Dry-Run Validation Check" backend/scripts/tetragon-aks-dry-run-check.sh
+grep -n "It does NOT apply manifests" backend/scripts/tetragon-aks-dry-run-check.sh
+grep -n "No production remediation action was enabled" backend/scripts/tetragon-aks-dry-run-check.sh
+```
+
+Run a syntax check:
+
+```bash
+bash -n backend/scripts/tetragon-aks-dry-run-check.sh
+```
 
 ### Tetragon GitHub Actions CI workflow does not appear
 
@@ -2320,7 +2423,7 @@ Verify:
 ps aux | grep "streaming" | grep -v grep
 ```
 
-## 37. Final Clean Check
+## 38. Final Clean Check
 
 Run:
 
@@ -2341,30 +2444,28 @@ nothing to commit, working tree clean
 Latest commits should include:
 
 ```text
+Merge pull request #39 from Willie-Byte/feature/tetragon-controlled-aks-validation-dry-run
+Merge pull request #38 from Willie-Byte/docs/update-checklist-tetragon-ci-workflow
 Merge pull request #37 from Willie-Byte/feature/tetragon-ci-workflow
 Merge pull request #36 from Willie-Byte/docs/update-checklist-tetragon-all-script
 Merge pull request #35 from Willie-Byte/feature/tetragon-local-test-suite-script
-Merge pull request #34 from Willie-Byte/docs/update-checklist-tetragon-e2e-negative
-Merge pull request #33 from Willie-Byte/feature/tetragon-e2e-negative-path-test
 ```
 
-## 38. Recommended Next Branch
+## 39. Recommended Next Branch
 
 Next engineering branch:
 
 ```text
-feature/tetragon-controlled-aks-validation-dry-run
+docs/update-tetragon-aks-validation-dry-run-docs
 ```
 
 Goal:
 
-Begin a controlled AKS validation dry run using the existing Tetragon deployment guide and validation checklist, while keeping production remediation disabled.
+Document the new AKS dry-run helper inside the dedicated Tetragon AKS validation checklist before any live bridge apply steps.
 
 Possible improvements:
 
-- Confirm Kubernetes context points to the intended AKS cluster
-- Confirm `aura` namespace, ConfigMap, and Secret readiness
-- Apply or inspect the Tetragon bridge DaemonSet safely
-- Validate bridge logs before triggering suspicious test events
-- Keep approval, worker apply actions, and production remediation disabled
-- Use `npm run test:tetragon:all` before any live AKS validation
+- Add `backend/scripts/tetragon-aks-dry-run-check.sh` to the AKS validation checklist
+- Place the dry-run helper before the bridge apply section
+- Clarify that the helper does not apply, delete, exec, or enable remediation
+- Keep live Kafka, AKS apply, approval, worker, and remediation disabled
