@@ -35,7 +35,8 @@
     "test:tetragon:normalizer": "node scripts/testTetragonTelemetryNormalizer.js",
     "test:tetragon:normalizer-publisher": "node scripts/testTetragonTelemetryNormalizerPublisher.js",
     "test:tetragon:e2e": "node scripts/testTetragonLocalEndToEnd.js",
-    "test:tetragon:e2e-negative": "node scripts/testTetragonLocalEndToEndNegative.js"
+    "test:tetragon:e2e-negative": "node scripts/testTetragonLocalEndToEndNegative.js",
+    "test:tetragon:all": "npm run test:tetragon:bridge && npm run test:tetragon:replay && npm run test:tetragon:mock-publisher && npm run test:tetragon:normalizer && npm run test:tetragon:normalizer-publisher && npm run test:tetragon:e2e && npm run test:tetragon:e2e-negative"
   },
   "keywords": [],
   "author": "",
