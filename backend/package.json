@@ -33,7 +33,8 @@
     "test:tetragon:replay": "node scripts/replayTetragonBridgeLog.js",
     "test:tetragon:mock-publisher": "node scripts/testTetragonBridgeMockPublisher.js",
     "test:tetragon:normalizer": "node scripts/testTetragonTelemetryNormalizer.js",
-    "test:tetragon:normalizer-publisher": "node scripts/testTetragonTelemetryNormalizerPublisher.js"
+    "test:tetragon:normalizer-publisher": "node scripts/testTetragonTelemetryNormalizerPublisher.js",
+    "test:tetragon:e2e": "node scripts/testTetragonLocalEndToEnd.js"
   },
   "keywords": [],
   "author": "",
