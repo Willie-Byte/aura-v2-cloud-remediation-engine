@@ -33,6 +33,7 @@ Aura V2 currently demonstrates:
 - Tetragon local end-to-end test for the full local pipeline
 - Tetragon local negative-path E2E test for ignored/non-suspicious events
 - Tetragon local all-tests command for the full safety suite
+- Tetragon GitHub Actions CI workflow for local safety tests
 - Clear safety boundaries between local RAG, Kafka, AKS, eBPF, and production remediation
 
 ## 1. Start From a Clean Main Branch
@@ -58,11 +59,11 @@ nothing to commit, working tree clean
 The latest commits should include recent work such as:
 
 ```text
+Merge pull request #37 from Willie-Byte/feature/tetragon-ci-workflow
+Merge pull request #36 from Willie-Byte/docs/update-checklist-tetragon-all-script
 Merge pull request #35 from Willie-Byte/feature/tetragon-local-test-suite-script
 Merge pull request #34 from Willie-Byte/docs/update-checklist-tetragon-e2e-negative
 Merge pull request #33 from Willie-Byte/feature/tetragon-e2e-negative-path-test
-Merge pull request #32 from Willie-Byte/docs/update-checklist-tetragon-e2e
-Merge pull request #31 from Willie-Byte/feature/tetragon-local-end-to-end-test
 ```
 
 ## 2. Use the Correct Node Version
@@ -1542,7 +1543,67 @@ What this verifies:
 - no live Kafka, AKS, approval, worker, or production remediation connection is required
 
 
-## 32. RAG-Only Demo Safety Settings
+## 32. Verify Tetragon GitHub Actions CI Workflow
+
+PR #37 added a GitHub Actions workflow that runs the local Tetragon safety suite automatically.
+
+Workflow file:
+
+```text
+.github/workflows/tetragon-local-tests.yml
+```
+
+The workflow is named:
+
+```text
+Tetragon Local Safety Tests
+```
+
+The workflow runs:
+
+```bash
+npm run test:tetragon:all
+```
+
+It triggers on:
+
+```text
+pull_request changes touching backend/**
+pull_request changes touching .github/workflows/tetragon-local-tests.yml
+push to main touching backend/**
+push to main touching .github/workflows/tetragon-local-tests.yml
+```
+
+Verify the workflow exists:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+
+ls .github/workflows/tetragon-local-tests.yml
+grep -n "Tetragon Local Safety Tests" .github/workflows/tetragon-local-tests.yml
+grep -n "npm run test:tetragon:all" .github/workflows/tetragon-local-tests.yml
+grep -n "node-version-file" .github/workflows/tetragon-local-tests.yml
+```
+
+Expected:
+
+```text
+.github/workflows/tetragon-local-tests.yml
+1:name: Tetragon Local Safety Tests
+run: npm run test:tetragon:all
+node-version-file: ".nvmrc"
+```
+
+What this verifies:
+
+- pull requests can automatically run the local Tetragon safety suite
+- the suite runs from the backend folder
+- the workflow uses the repo `.nvmrc`
+- tests remain local only
+- no live Kafka, AKS, approval, worker, or production remediation connection is required
+
+
+## 33. RAG-Only Demo Safety Settings
 
 For a RAG-only demo, keep this in `backend/.env`:
 
@@ -1556,7 +1617,7 @@ RAG_CHAT_MODEL=gpt-4o-mini
 
 Do not commit real `.env` files.
 
-## 33. Safety Boundaries To Explain During Demo
+## 34. Safety Boundaries To Explain During Demo
 
 Aura V2 is intentionally conservative.
 
@@ -1581,21 +1642,22 @@ For the current demo:
 - The Tetragon local E2E test verifies the full local pipeline without live services
 - The Tetragon negative-path E2E test verifies ignored/non-suspicious events stay safe
 - The Tetragon all-tests script runs the full local suite with one command
+- The Tetragon CI workflow runs the local suite automatically on backend PRs
 - The system should not connect RAG directly to live Tetragon events yet
 - Rust eBPF enforcement work stays separate from RAG
 - Terraform apply mode is not production-ready
 
-## 34. Good Demo Explanation
+## 35. Good Demo Explanation
 
 Use this short explanation:
 
 ```text
 Aura V2 is an event-driven cloud remediation prototype. It uses Kafka to separate threat intake, AI-assisted remediation planning, validation, execution results, approval decisions, DLQ handling, and audit events. The system is safety-first, so real execution is blocked behind policy validation, simulation mode, and future approval controls.
 
-The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, an AKS validation checklist, a telemetry normalizer flow doc, local unauthorizedPodExec normalizer support, a local normalizer publisher payload test, a full local E2E test, a local negative-path E2E test, and a one-command local Tetragon safety suite so suspicious eBPF process events can be validated safely before live AKS or live Kafka testing.
+The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, an AKS validation checklist, a telemetry normalizer flow doc, local unauthorizedPodExec normalizer support, a local normalizer publisher payload test, a full local E2E test, a local negative-path E2E test, a one-command local Tetragon safety suite, and a GitHub Actions CI workflow so suspicious eBPF process events can be validated safely before live AKS or live Kafka testing.
 ```
 
-## 35. Troubleshooting
+## 36. Troubleshooting
 
 ### RAG health returns 404
 
@@ -1813,6 +1875,41 @@ Expected result:
 ```
 
 This test should not require a real Kafka cluster.
+
+### Tetragon GitHub Actions CI workflow does not appear
+
+Verify that PR #37 is included in your local `main` branch:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+git checkout main
+git pull
+git log --oneline -5
+```
+
+The recent commits should include:
+
+```text
+Merge pull request #37 from Willie-Byte/feature/tetragon-ci-workflow
+```
+
+Then verify the workflow exists:
+
+```bash
+ls .github/workflows/tetragon-local-tests.yml
+grep -n "Tetragon Local Safety Tests" .github/workflows/tetragon-local-tests.yml
+grep -n "npm run test:tetragon:all" .github/workflows/tetragon-local-tests.yml
+grep -n "node-version-file" .github/workflows/tetragon-local-tests.yml
+```
+
+Expected result:
+
+```text
+node-version-file: ".nvmrc"
+run: npm run test:tetragon:all
+```
+
+If the workflow fails on GitHub, open the Actions tab, select `Tetragon Local Safety Tests`, and check whether the failure happened during checkout, Node setup, dependency install, or the local Tetragon test suite.
 
 ### Tetragon all-tests script fails
 
@@ -2223,7 +2320,7 @@ Verify:
 ps aux | grep "streaming" | grep -v grep
 ```
 
-## 36. Final Clean Check
+## 37. Final Clean Check
 
 Run:
 
@@ -2244,29 +2341,30 @@ nothing to commit, working tree clean
 Latest commits should include:
 
 ```text
+Merge pull request #37 from Willie-Byte/feature/tetragon-ci-workflow
+Merge pull request #36 from Willie-Byte/docs/update-checklist-tetragon-all-script
 Merge pull request #35 from Willie-Byte/feature/tetragon-local-test-suite-script
 Merge pull request #34 from Willie-Byte/docs/update-checklist-tetragon-e2e-negative
 Merge pull request #33 from Willie-Byte/feature/tetragon-e2e-negative-path-test
-Merge pull request #32 from Willie-Byte/docs/update-checklist-tetragon-e2e
-Merge pull request #31 from Willie-Byte/feature/tetragon-local-end-to-end-test
 ```
 
-## 37. Recommended Next Branch
+## 38. Recommended Next Branch
 
 Next engineering branch:
 
 ```text
-feature/tetragon-ci-workflow
+feature/tetragon-controlled-aks-validation-dry-run
 ```
 
 Goal:
 
-Add a GitHub Actions workflow that runs the local Tetragon safety suite automatically on pull requests.
+Begin a controlled AKS validation dry run using the existing Tetragon deployment guide and validation checklist, while keeping production remediation disabled.
 
 Possible improvements:
 
-- Run `npm ci` or `npm install` in `backend`
-- Run `npm run test:tetragon:all`
-- Trigger on pull requests touching backend code
-- Keep tests local only
-- Keep live Kafka, AKS, approval, worker, and remediation disabled
+- Confirm Kubernetes context points to the intended AKS cluster
+- Confirm `aura` namespace, ConfigMap, and Secret readiness
+- Apply or inspect the Tetragon bridge DaemonSet safely
+- Validate bridge logs before triggering suspicious test events
+- Keep approval, worker apply actions, and production remediation disabled
+- Use `npm run test:tetragon:all` before any live AKS validation
