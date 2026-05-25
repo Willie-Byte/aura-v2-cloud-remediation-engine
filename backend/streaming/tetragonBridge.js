@@ -41,7 +41,7 @@ function isSuspiciousProcess(binary, args) {
   const normalizedArgs = String(args || "").toLowerCase();
 
   const suspiciousBinaryPattern =
-    /\/(sh|bash|ash|zsh|curl|wget|nc|ncat|python|python3|perl|ruby|node)$/;
+    /\/(sh|bash|ash|zsh|curl|wget|nc|ncat|python|python3|perl|ruby|node|whoami|id|uname)$/;
 
   const suspiciousArgsPattern =
     /\b(whoami|uname|id|curl|wget|nc|ncat|cat \/etc\/passwd|printenv)\b/;
