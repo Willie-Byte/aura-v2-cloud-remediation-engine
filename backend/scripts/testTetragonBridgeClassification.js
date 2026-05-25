@@ -1,6 +1,10 @@
 const fs = require("fs");
 const path = require("path");
 
+// The bridge reads monitored namespaces during module import.
+// Keep default for existing fixtures and include aura-lab for the real AKS fixture.
+process.env.TETRAGON_MONITORED_NAMESPACES = "default,aura-lab";
+
 const {
   classifyTetragonProcessExec,
   isSuspiciousProcess,
@@ -58,6 +62,29 @@ function run() {
   assert(
     suspiciousTelemetry.binary === "/bin/sh",
     "Expected binary to be /bin/sh."
+  );
+
+  const aksWhoamiEvent = readFixture("aks-whoami-process-exec.json");
+  const aksWhoamiTelemetry = classifyTetragonProcessExec(aksWhoamiEvent);
+
+  assert(
+    aksWhoamiTelemetry,
+    "Expected AKS /usr/bin/whoami fixture to produce telemetry."
+  );
+
+  assert(
+    aksWhoamiTelemetry.resourceName === "aura-lab/attack-lab-74675467f6-sg5gd",
+    "Expected AKS whoami resourceName to match aura-lab attack-lab pod."
+  );
+
+  assert(
+    aksWhoamiTelemetry.binary === "/usr/bin/whoami",
+    "Expected AKS whoami binary to be /usr/bin/whoami."
+  );
+
+  assert(
+    aksWhoamiTelemetry.issueType === "unauthorizedPodExec",
+    "Expected AKS whoami issueType to be unauthorizedPodExec."
   );
 
   const normalEvent = readFixture("non-suspicious-process-exec.json");
