@@ -65,11 +65,11 @@ nothing to commit, working tree clean
 The latest commits should include recent work such as:
 
 ```text
+Merge pull request #51 from Willie-Byte/feature/tetragon-controlled-live-validation
+Merge pull request #50 from Willie-Byte/docs/update-checklist-tetragon-aks-dry-run-recovery
 Merge pull request #49 from Willie-Byte/docs/document-successful-tetragon-aks-dry-run-recovery
 Merge pull request #48 from Willie-Byte/docs/update-checklist-tetragon-aks-readiness-final-status
 Merge pull request #47 from Willie-Byte/docs/finalize-tetragon-aks-readiness-status
-Merge pull request #46 from Willie-Byte/docs/update-checklist-azure-aks-readiness-recovery-plan
-Merge pull request #45 from Willie-Byte/docs/update-azure-aks-readiness-recovery-plan
 ```
 
 ## 2. Use the Correct Node Version
@@ -1913,7 +1913,65 @@ What this verifies:
 - production remediation remains disabled
 
 
-## 39. RAG-Only Demo Safety Settings
+## 39. Verify Tetragon Controlled Live Validation
+
+PR #51 added the controlled live AKS validation result.
+
+Live validation result file:
+
+```text
+backend/docs/aks-validation-runs/tetragon-controlled-live-validation-2026-05-25.md
+```
+
+The live validation result confirms:
+
+```text
+A real AKS pod exec event was generated in aura-lab.
+Tetragon captured the process_exec event.
+The Aura Tetragon bridge classified it as unauthorizedPodExec.
+The bridge published the event to Kafka raw-telemetry.
+The test pod was cleaned back down to 0.
+Production remediation remained disabled.
+```
+
+Verify the bridge code detects direct exec binaries:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+
+grep -n "whoami|id|uname" backend/streaming/tetragonBridge.js
+```
+
+Verify the AKS whoami regression fixture exists:
+
+```bash
+ls backend/fixtures/tetragon/aks-whoami-process-exec.json
+```
+
+Verify the live validation result document:
+
+```bash
+ls backend/docs/aks-validation-runs/tetragon-controlled-live-validation-2026-05-25.md
+grep -n "Tetragon Controlled Live Validation Result" backend/docs/aks-validation-runs/tetragon-controlled-live-validation-2026-05-25.md
+grep -n "v3-ebpf-whoami-fix" backend/docs/aks-validation-runs/tetragon-controlled-live-validation-2026-05-25.md
+grep -n "Published unauthorizedPodExec to raw-telemetry" backend/docs/aks-validation-runs/tetragon-controlled-live-validation-2026-05-25.md
+grep -n "production remediation disabled" backend/docs/aks-validation-runs/tetragon-controlled-live-validation-2026-05-25.md
+grep -n "HEREDOC_MARKER_SHOULD_NOT_EXIST" backend/docs/aks-validation-runs/tetragon-controlled-live-validation-2026-05-25.md
+```
+
+The final grep should return nothing.
+
+What this verifies:
+
+- the real AKS event shape is now covered by a regression fixture
+- direct `/usr/bin/whoami` process execution is detected
+- the fixed bridge image was built and deployed
+- the bridge published `unauthorizedPodExec` to `raw-telemetry`
+- the controlled test pod was cleaned up
+- production remediation remained disabled
+
+
+## 40. RAG-Only Demo Safety Settings
 
 For a RAG-only demo, keep this in `backend/.env`:
 
@@ -1927,7 +1985,7 @@ RAG_CHAT_MODEL=gpt-4o-mini
 
 Do not commit real `.env` files.
 
-## 40. Safety Boundaries To Explain During Demo
+## 41. Safety Boundaries To Explain During Demo
 
 Aura V2 is intentionally conservative.
 
@@ -1959,21 +2017,22 @@ For the current demo:
 - The Azure AKS readiness recovery plan documents the required stop conditions before another live dry-run
 - The Tetragon AKS readiness final status marks live AKS validation as paused until Azure/AKS readiness is restored
 - The Tetragon AKS dry-run recovery result documents that AKS became reachable, local tests passed, and the dry-run helper passed
+- The Tetragon controlled live validation result proves real AKS pod exec telemetry can be classified and published to raw-telemetry safely
 - The system should not connect RAG directly to live Tetragon events yet
 - Rust eBPF enforcement work stays separate from RAG
 - Terraform apply mode is not production-ready
 
-## 41. Good Demo Explanation
+## 42. Good Demo Explanation
 
 Use this short explanation:
 
 ```text
 Aura V2 is an event-driven cloud remediation prototype. It uses Kafka to separate threat intake, AI-assisted remediation planning, validation, execution results, approval decisions, DLQ handling, and audit events. The system is safety-first, so real execution is blocked behind policy validation, simulation mode, and future approval controls.
 
-The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, an AKS validation checklist, a telemetry normalizer flow doc, local unauthorizedPodExec normalizer support, a local normalizer publisher payload test, a full local E2E test, a local negative-path E2E test, a one-command local Tetragon safety suite, a GitHub Actions CI workflow, an AKS dry-run validation helper, dedicated AKS validation checklist dry-run documentation, a controlled AKS dry-run execution result showing a safe blocked state when AKS/subscription readiness failed, an Azure AKS readiness recovery plan documenting required stop conditions before another live dry-run, a final Tetragon/AKS readiness status document marking live AKS validation as paused until Azure/AKS health is restored, and a successful AKS dry-run recovery result documenting the quota root cause, restored AKS reachability, passing local Tetragon safety tests, and passing dry-run helper, so suspicious eBPF process events can be validated safely before live AKS or live Kafka testing.
+The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, an AKS validation checklist, a telemetry normalizer flow doc, local unauthorizedPodExec normalizer support, a local normalizer publisher payload test, a full local E2E test, a local negative-path E2E test, a one-command local Tetragon safety suite, a GitHub Actions CI workflow, an AKS dry-run validation helper, dedicated AKS validation checklist dry-run documentation, a controlled AKS dry-run execution result showing a safe blocked state when AKS/subscription readiness failed, an Azure AKS readiness recovery plan documenting required stop conditions before another live dry-run, a final Tetragon/AKS readiness status document marking live AKS validation as paused until Azure/AKS health is restored, a successful AKS dry-run recovery result documenting the quota root cause, restored AKS reachability, passing local Tetragon safety tests, and passing dry-run helper, and a controlled live AKS validation result proving that a real pod exec event can be captured by Tetragon, classified by Aura as unauthorizedPodExec, and published to Kafka raw-telemetry while production remediation remains disabled.
 ```
 
-## 42. Troubleshooting
+## 43. Troubleshooting
 
 ### RAG health returns 404
 
@@ -2191,6 +2250,42 @@ Expected result:
 ```
 
 This test should not require a real Kafka cluster.
+
+### Tetragon controlled live validation result does not appear
+
+Verify that PR #51 is included in your local `main` branch:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+git checkout main
+git pull
+git log --oneline -5
+```
+
+The recent commits should include:
+
+```text
+Merge pull request #51 from Willie-Byte/feature/tetragon-controlled-live-validation
+```
+
+Then verify the code fix, regression fixture, and live validation document exist:
+
+```bash
+grep -n "whoami|id|uname" backend/streaming/tetragonBridge.js
+ls backend/fixtures/tetragon/aks-whoami-process-exec.json
+ls backend/docs/aks-validation-runs/tetragon-controlled-live-validation-2026-05-25.md
+grep -n "Tetragon Controlled Live Validation Result" backend/docs/aks-validation-runs/tetragon-controlled-live-validation-2026-05-25.md
+grep -n "Published unauthorizedPodExec to raw-telemetry" backend/docs/aks-validation-runs/tetragon-controlled-live-validation-2026-05-25.md
+```
+
+Expected result:
+
+```text
+whoami|id|uname
+aks-whoami-process-exec.json
+Tetragon Controlled Live Validation Result
+Published unauthorizedPodExec to raw-telemetry
+```
 
 ### Tetragon AKS dry-run recovery result does not appear
 
@@ -2843,7 +2938,7 @@ Verify:
 ps aux | grep "streaming" | grep -v grep
 ```
 
-## 43. Final Clean Check
+## 44. Final Clean Check
 
 Run:
 
@@ -2864,40 +2959,41 @@ nothing to commit, working tree clean
 Latest commits should include:
 
 ```text
+Merge pull request #51 from Willie-Byte/feature/tetragon-controlled-live-validation
+Merge pull request #50 from Willie-Byte/docs/update-checklist-tetragon-aks-dry-run-recovery
 Merge pull request #49 from Willie-Byte/docs/document-successful-tetragon-aks-dry-run-recovery
 Merge pull request #48 from Willie-Byte/docs/update-checklist-tetragon-aks-readiness-final-status
 Merge pull request #47 from Willie-Byte/docs/finalize-tetragon-aks-readiness-status
-Merge pull request #46 from Willie-Byte/docs/update-checklist-azure-aks-readiness-recovery-plan
-Merge pull request #45 from Willie-Byte/docs/update-azure-aks-readiness-recovery-plan
 ```
 
-## 44. Recommended Next Branch
+## 45. Recommended Next Branch
 
 Next engineering branch:
 
 ```text
-feature/tetragon-controlled-live-validation
+feature/validate-tetragon-downstream-normalizer-flow
 ```
 
 Goal:
 
-Run the next controlled live Tetragon validation step now that AKS readiness has been restored and the dry-run helper has passed.
+Validate the downstream Kafka/normalizer path after the bridge successfully published a real `unauthorizedPodExec` event to `raw-telemetry`.
 
 Required before starting:
 
 - `git status` is clean on `main`
-- AKS context is `aks-aura-v2-dev`
-- `kubectl get nodes --request-timeout=15s` returns a Ready node
+- PR #51 is merged
 - `npm run test:tetragon:all` passes locally
-- `./backend/scripts/tetragon-aks-dry-run-check.sh` passes
+- Tetragon bridge remains healthy
 - production remediation remains disabled
-- no destructive action is enabled
+- no Terraform apply is run
+- no destructive kubectl actions are run
 
 The next validation step should remain controlled:
 
 ```text
+bridge publish already proven
+now verify downstream consumer/normalizer behavior
 no production remediation
-no destructive kubectl actions
-no Terraform apply
-only targeted, reversible validation
+no destructive action
+document the result before expanding scope
 ```
