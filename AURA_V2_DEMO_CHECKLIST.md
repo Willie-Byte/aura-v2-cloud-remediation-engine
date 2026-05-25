@@ -37,6 +37,7 @@ Aura V2 currently demonstrates:
 - Tetragon AKS dry-run validation helper
 - Tetragon AKS validation checklist dry-run documentation
 - Tetragon controlled AKS dry-run execution result documentation
+- Azure AKS readiness recovery plan documentation
 - Clear safety boundaries between local RAG, Kafka, AKS, eBPF, and production remediation
 
 ## 1. Start From a Clean Main Branch
@@ -62,11 +63,11 @@ nothing to commit, working tree clean
 The latest commits should include recent work such as:
 
 ```text
+Merge pull request #45 from Willie-Byte/docs/update-azure-aks-readiness-recovery-plan
+Merge pull request #44 from Willie-Byte/docs/update-checklist-tetragon-aks-dry-run-execution-result
 Merge pull request #43 from Willie-Byte/feature/tetragon-controlled-aks-dry-run-execution
 Merge pull request #42 from Willie-Byte/docs/update-checklist-tetragon-aks-validation-docs
 Merge pull request #41 from Willie-Byte/docs/update-tetragon-aks-validation-dry-run-docs
-Merge pull request #40 from Willie-Byte/docs/update-checklist-tetragon-aks-dry-run
-Merge pull request #39 from Willie-Byte/feature/tetragon-controlled-aks-validation-dry-run
 ```
 
 ## 2. Use the Correct Node Version
@@ -1773,7 +1774,50 @@ What this verifies:
 - no production remediation was enabled
 
 
-## 36. RAG-Only Demo Safety Settings
+## 36. Verify Azure AKS Readiness Recovery Plan
+
+PR #45 added a dedicated recovery plan for the Azure/AKS readiness blocker discovered during the controlled Tetragon AKS dry-run.
+
+Recovery plan file:
+
+```text
+backend/docs/azure-aks-readiness-recovery-plan.md
+```
+
+The recovery plan documents:
+
+```text
+ReadOnlyDisabledSubscription
+Required Stop Conditions
+safe blocked state
+```
+
+Verify the recovery plan:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+
+ls backend/docs/azure-aks-readiness-recovery-plan.md
+grep -n "Azure AKS Readiness Recovery Plan" backend/docs/azure-aks-readiness-recovery-plan.md
+grep -n "ReadOnlyDisabledSubscription" backend/docs/azure-aks-readiness-recovery-plan.md
+grep -n "Required Stop Conditions" backend/docs/azure-aks-readiness-recovery-plan.md
+grep -n "safe blocked state" backend/docs/azure-aks-readiness-recovery-plan.md
+grep -n "HEREDOC_MARKER_SHOULD_NOT_EXIST" backend/docs/azure-aks-readiness-recovery-plan.md
+```
+
+The final grep should return nothing.
+
+What this verifies:
+
+- Azure/AKS recovery is documented before another live dry-run attempt
+- the subscription read-only/disabled blocker is documented
+- AKS cluster and node pool failed provisioning states are documented
+- kubectl timeout stop conditions are documented
+- the project remains in a safe blocked state until Azure/AKS readiness is restored
+- `kubectl apply`, pod exec, and remediation remain disabled until recovery checks pass
+
+
+## 37. RAG-Only Demo Safety Settings
 
 For a RAG-only demo, keep this in `backend/.env`:
 
@@ -1787,7 +1831,7 @@ RAG_CHAT_MODEL=gpt-4o-mini
 
 Do not commit real `.env` files.
 
-## 37. Safety Boundaries To Explain During Demo
+## 38. Safety Boundaries To Explain During Demo
 
 Aura V2 is intentionally conservative.
 
@@ -1816,21 +1860,22 @@ For the current demo:
 - The Tetragon AKS dry-run helper checks readiness before live validation
 - The Tetragon AKS validation checklist places dry-run checks before live apply steps
 - The Tetragon controlled AKS dry-run result documents the safe blocked state before live apply
+- The Azure AKS readiness recovery plan documents the required stop conditions before another live dry-run
 - The system should not connect RAG directly to live Tetragon events yet
 - Rust eBPF enforcement work stays separate from RAG
 - Terraform apply mode is not production-ready
 
-## 38. Good Demo Explanation
+## 39. Good Demo Explanation
 
 Use this short explanation:
 
 ```text
 Aura V2 is an event-driven cloud remediation prototype. It uses Kafka to separate threat intake, AI-assisted remediation planning, validation, execution results, approval decisions, DLQ handling, and audit events. The system is safety-first, so real execution is blocked behind policy validation, simulation mode, and future approval controls.
 
-The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, an AKS validation checklist, a telemetry normalizer flow doc, local unauthorizedPodExec normalizer support, a local normalizer publisher payload test, a full local E2E test, a local negative-path E2E test, a one-command local Tetragon safety suite, a GitHub Actions CI workflow, an AKS dry-run validation helper, dedicated AKS validation checklist dry-run documentation, and a controlled AKS dry-run execution result showing a safe blocked state when AKS/subscription readiness failed, so suspicious eBPF process events can be validated safely before live AKS or live Kafka testing.
+The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, an AKS validation checklist, a telemetry normalizer flow doc, local unauthorizedPodExec normalizer support, a local normalizer publisher payload test, a full local E2E test, a local negative-path E2E test, a one-command local Tetragon safety suite, a GitHub Actions CI workflow, an AKS dry-run validation helper, dedicated AKS validation checklist dry-run documentation, a controlled AKS dry-run execution result showing a safe blocked state when AKS/subscription readiness failed, and an Azure AKS readiness recovery plan documenting required stop conditions before another live dry-run, so suspicious eBPF process events can be validated safely before live AKS or live Kafka testing.
 ```
 
-## 39. Troubleshooting
+## 40. Troubleshooting
 
 ### RAG health returns 404
 
@@ -2048,6 +2093,42 @@ Expected result:
 ```
 
 This test should not require a real Kafka cluster.
+
+### Azure AKS readiness recovery plan does not appear
+
+Verify that PR #45 is included in your local `main` branch:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+git checkout main
+git pull
+git log --oneline -5
+```
+
+The recent commits should include:
+
+```text
+Merge pull request #45 from Willie-Byte/docs/update-azure-aks-readiness-recovery-plan
+```
+
+Then verify the recovery plan exists:
+
+```bash
+ls backend/docs/azure-aks-readiness-recovery-plan.md
+grep -n "Azure AKS Readiness Recovery Plan" backend/docs/azure-aks-readiness-recovery-plan.md
+grep -n "ReadOnlyDisabledSubscription" backend/docs/azure-aks-readiness-recovery-plan.md
+grep -n "Required Stop Conditions" backend/docs/azure-aks-readiness-recovery-plan.md
+grep -n "safe blocked state" backend/docs/azure-aks-readiness-recovery-plan.md
+```
+
+Expected result:
+
+```text
+Azure AKS Readiness Recovery Plan
+ReadOnlyDisabledSubscription
+Required Stop Conditions
+safe blocked state
+```
 
 ### Tetragon controlled AKS dry-run result does not appear
 
@@ -2592,7 +2673,7 @@ Verify:
 ps aux | grep "streaming" | grep -v grep
 ```
 
-## 40. Final Clean Check
+## 41. Final Clean Check
 
 Run:
 
@@ -2613,31 +2694,30 @@ nothing to commit, working tree clean
 Latest commits should include:
 
 ```text
+Merge pull request #45 from Willie-Byte/docs/update-azure-aks-readiness-recovery-plan
+Merge pull request #44 from Willie-Byte/docs/update-checklist-tetragon-aks-dry-run-execution-result
 Merge pull request #43 from Willie-Byte/feature/tetragon-controlled-aks-dry-run-execution
 Merge pull request #42 from Willie-Byte/docs/update-checklist-tetragon-aks-validation-docs
 Merge pull request #41 from Willie-Byte/docs/update-tetragon-aks-validation-dry-run-docs
-Merge pull request #40 from Willie-Byte/docs/update-checklist-tetragon-aks-dry-run
-Merge pull request #39 from Willie-Byte/feature/tetragon-controlled-aks-validation-dry-run
 ```
 
-## 41. Recommended Next Branch
+## 42. Recommended Next Branch
 
 Next engineering branch:
 
 ```text
-docs/update-azure-aks-readiness-recovery-plan
+docs/finalize-tetragon-aks-readiness-status
 ```
 
 Goal:
 
-Document the Azure/AKS readiness recovery plan before attempting another live AKS dry-run.
+Finalize the current Tetragon/AKS readiness status so the repo clearly shows that live AKS validation is paused until Azure subscription and AKS API readiness are restored.
 
 Possible improvements:
 
-- Document the observed AKS API timeout
-- Document the failed AKS cluster and node pool provisioning states
-- Document the `ReadOnlyDisabledSubscription` credential refresh blocker
-- Add Azure Portal billing/subscription checks
-- Add AKS provisioning recovery checks
-- Keep `kubectl apply`, pod exec, and remediation disabled until Azure/AKS readiness is restored
-- Rerun only the dry-run helper after the subscription and AKS API server are healthy
+- Summarize the current safe blocked state
+- Link the AKS dry-run execution result
+- Link the Azure AKS readiness recovery plan
+- Confirm no bridge DaemonSet was applied
+- Confirm no pod exec or remediation was enabled
+- State that the next live action is outside the repo: restore Azure subscription and AKS health before another dry-run
