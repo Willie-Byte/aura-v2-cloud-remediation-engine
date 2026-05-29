@@ -65,11 +65,11 @@ nothing to commit, working tree clean
 The latest commits should include recent work such as:
 
 ```text
+Merge pull request #57 from Willie-Byte/docs/finalize-aura-v2-demo-readiness-summary
+Merge pull request #56 from Willie-Byte/docs/update-checklist-tetragon-live-pipeline-final-status
 Merge pull request #55 from Willie-Byte/docs/finalize-tetragon-live-pipeline-status
 Merge pull request #54 from Willie-Byte/docs/update-checklist-tetragon-downstream-normalizer-flow
 Merge pull request #53 from Willie-Byte/feature/validate-tetragon-downstream-normalizer-flow
-Merge pull request #52 from Willie-Byte/docs/update-checklist-tetragon-controlled-live-validation
-Merge pull request #51 from Willie-Byte/feature/tetragon-controlled-live-validation
 ```
 
 ## 2. Use the Correct Node Version
@@ -2071,7 +2071,53 @@ What this verifies:
 - no additional live AKS event is required for the checklist update
 
 
-## 42. RAG-Only Demo Safety Settings
+## 42. Verify Aura V2 Demo Readiness Summary
+
+PR #57 added the Aura V2 demo readiness summary.
+
+Demo readiness summary document:
+
+```text
+backend/docs/aura-v2-demo-readiness-summary.md
+```
+
+The demo readiness summary confirms:
+
+```text
+Aura V2 is demo ready with safety boundaries.
+The Tetragon live pipeline was validated safely.
+Local RAG remains local-first.
+Production remediation execution remains disabled.
+Terraform apply remains disabled.
+Destructive Kubernetes actions remain disabled.
+Direct RAG-to-live-telemetry automation remains disabled.
+```
+
+Verify the demo readiness summary document:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+
+ls backend/docs/aura-v2-demo-readiness-summary.md
+grep -n "Aura V2 Demo Readiness Summary" backend/docs/aura-v2-demo-readiness-summary.md
+grep -n "DEMO READY WITH SAFETY BOUNDARIES" backend/docs/aura-v2-demo-readiness-summary.md
+grep -n "LIVE PIPELINE VALIDATED SAFELY" backend/docs/aura-v2-demo-readiness-summary.md
+grep -n "Production remediation execution" backend/docs/aura-v2-demo-readiness-summary.md
+grep -n "HEREDOC_MARKER_SHOULD_NOT_EXIST" backend/docs/aura-v2-demo-readiness-summary.md
+```
+
+The final grep should return nothing.
+
+What this verifies:
+
+- the demo readiness state is summarized in one document
+- safe demo capabilities are listed
+- disabled capabilities are listed
+- the final Tetragon status document and main checklist are referenced
+- no additional live AKS event is required for the checklist update
+
+
+## 43. RAG-Only Demo Safety Settings
 
 For a RAG-only demo, keep this in `backend/.env`:
 
@@ -2085,7 +2131,7 @@ RAG_CHAT_MODEL=gpt-4o-mini
 
 Do not commit real `.env` files.
 
-## 43. Safety Boundaries To Explain During Demo
+## 44. Safety Boundaries To Explain During Demo
 
 Aura V2 is intentionally conservative.
 
@@ -2120,21 +2166,22 @@ For the current demo:
 - The Tetragon controlled live validation result proves real AKS pod exec telemetry can be classified and published to raw-telemetry safely
 - The Tetragon downstream normalizer flow validation proves the event reached the normalizer, orchestrator, worker, approval queue, and awaiting_approval result safely
 - The Tetragon live pipeline final status document summarizes the validated safe end-to-end live path and the remaining disabled capabilities
+- The Aura V2 demo readiness summary explains what is safe to demo and what remains intentionally disabled
 - The system should not connect RAG directly to live Tetragon events yet
 - Rust eBPF enforcement work stays separate from RAG
 - Terraform apply mode is not production-ready
 
-## 44. Good Demo Explanation
+## 45. Good Demo Explanation
 
 Use this short explanation:
 
 ```text
 Aura V2 is an event-driven cloud remediation prototype. It uses Kafka to separate threat intake, AI-assisted remediation planning, validation, execution results, approval decisions, DLQ handling, and audit events. The system is safety-first, so real execution is blocked behind policy validation, simulation mode, and future approval controls.
 
-The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, an AKS validation checklist, a telemetry normalizer flow doc, local unauthorizedPodExec normalizer support, a local normalizer publisher payload test, a full local E2E test, a local negative-path E2E test, a one-command local Tetragon safety suite, a GitHub Actions CI workflow, an AKS dry-run validation helper, dedicated AKS validation checklist dry-run documentation, a controlled AKS dry-run execution result showing a safe blocked state when AKS/subscription readiness failed, an Azure AKS readiness recovery plan documenting required stop conditions before another live dry-run, a final Tetragon/AKS readiness status document marking live AKS validation as paused until Azure/AKS health is restored, a successful AKS dry-run recovery result documenting the quota root cause, restored AKS reachability, passing local Tetragon safety tests, and passing dry-run helper, and a controlled live AKS validation result proving that a real pod exec event can be captured by Tetragon, classified by Aura as unauthorizedPodExec, and published to Kafka raw-telemetry while production remediation remains disabled, and a downstream normalizer validation result proving the same event safely flowed through raw-telemetry, normalization, orchestration, worker validation, the approval queue, and an awaiting_approval result without automatic destructive remediation, and a final live pipeline status document summarizing that the Tetragon live pipeline was validated safely while production remediation, Terraform apply, destructive Kubernetes actions, and direct RAG-to-live-telemetry automation remain disabled.
+The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, an AKS validation checklist, a telemetry normalizer flow doc, local unauthorizedPodExec normalizer support, a local normalizer publisher payload test, a full local E2E test, a local negative-path E2E test, a one-command local Tetragon safety suite, a GitHub Actions CI workflow, an AKS dry-run validation helper, dedicated AKS validation checklist dry-run documentation, a controlled AKS dry-run execution result showing a safe blocked state when AKS/subscription readiness failed, an Azure AKS readiness recovery plan documenting required stop conditions before another live dry-run, a final Tetragon/AKS readiness status document marking live AKS validation as paused until Azure/AKS health is restored, a successful AKS dry-run recovery result documenting the quota root cause, restored AKS reachability, passing local Tetragon safety tests, and passing dry-run helper, and a controlled live AKS validation result proving that a real pod exec event can be captured by Tetragon, classified by Aura as unauthorizedPodExec, and published to Kafka raw-telemetry while production remediation remains disabled, and a downstream normalizer validation result proving the same event safely flowed through raw-telemetry, normalization, orchestration, worker validation, the approval queue, and an awaiting_approval result without automatic destructive remediation, and a final live pipeline status document summarizing that the Tetragon live pipeline was validated safely while production remediation, Terraform apply, destructive Kubernetes actions, and direct RAG-to-live-telemetry automation remain disabled, and a demo readiness summary that clearly lists what Aura V2 can safely demonstrate now.
 ```
 
-## 45. Troubleshooting
+## 46. Troubleshooting
 
 ### RAG health returns 404
 
@@ -2352,6 +2399,42 @@ Expected result:
 ```
 
 This test should not require a real Kafka cluster.
+
+### Aura V2 demo readiness summary does not appear
+
+Verify that PR #57 is included in your local `main` branch:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+git checkout main
+git pull
+git log --oneline -5
+```
+
+The recent commits should include:
+
+```text
+Merge pull request #57 from Willie-Byte/docs/finalize-aura-v2-demo-readiness-summary
+```
+
+Then verify the demo readiness summary document exists:
+
+```bash
+ls backend/docs/aura-v2-demo-readiness-summary.md
+grep -n "Aura V2 Demo Readiness Summary" backend/docs/aura-v2-demo-readiness-summary.md
+grep -n "DEMO READY WITH SAFETY BOUNDARIES" backend/docs/aura-v2-demo-readiness-summary.md
+grep -n "LIVE PIPELINE VALIDATED SAFELY" backend/docs/aura-v2-demo-readiness-summary.md
+grep -n "Production remediation execution" backend/docs/aura-v2-demo-readiness-summary.md
+```
+
+Expected result:
+
+```text
+Aura V2 Demo Readiness Summary
+DEMO READY WITH SAFETY BOUNDARIES
+LIVE PIPELINE VALIDATED SAFELY
+Production remediation execution
+```
 
 ### Tetragon live pipeline final status does not appear
 
@@ -3108,7 +3191,7 @@ Verify:
 ps aux | grep "streaming" | grep -v grep
 ```
 
-## 46. Final Clean Check
+## 47. Final Clean Check
 
 Run:
 
@@ -3129,40 +3212,40 @@ nothing to commit, working tree clean
 Latest commits should include:
 
 ```text
+Merge pull request #57 from Willie-Byte/docs/finalize-aura-v2-demo-readiness-summary
+Merge pull request #56 from Willie-Byte/docs/update-checklist-tetragon-live-pipeline-final-status
 Merge pull request #55 from Willie-Byte/docs/finalize-tetragon-live-pipeline-status
 Merge pull request #54 from Willie-Byte/docs/update-checklist-tetragon-downstream-normalizer-flow
 Merge pull request #53 from Willie-Byte/feature/validate-tetragon-downstream-normalizer-flow
-Merge pull request #52 from Willie-Byte/docs/update-checklist-tetragon-controlled-live-validation
-Merge pull request #51 from Willie-Byte/feature/tetragon-controlled-live-validation
 ```
 
-## 47. Recommended Next Branch
+## 48. Recommended Next Branch
 
 Next engineering branch:
 
 ```text
-docs/finalize-aura-v2-demo-readiness-summary
+docs/final-demo-polish-and-handoff
 ```
 
 Goal:
 
-Create a short demo-readiness summary that points to the completed Tetragon live pipeline status, the safety boundaries, and the main demo checklist.
+Do final demo polish and handoff cleanup after the demo readiness summary and checklist are both merged.
 
 Required before starting:
 
 - `git status` is clean on `main`
-- PR #55 is merged
-- the final live pipeline status document exists
-- the demo checklist includes the final live pipeline status document
+- PR #57 is merged
+- the demo readiness summary exists
+- the demo checklist includes the demo readiness summary
 - production remediation remains disabled
 - no Terraform apply is run
 - no destructive kubectl actions are run
 
-The next step should remain documentation/demo focused:
+The next step should remain final polish only:
 
 ```text
-summarize what Aura V2 can demo now
-point to the final status and checklist
+review demo checklist
+prepare handoff notes
 do not trigger another live AKS event
 do not enable production remediation
 ```
