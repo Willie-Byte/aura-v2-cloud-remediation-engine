@@ -65,11 +65,11 @@ nothing to commit, working tree clean
 The latest commits should include recent work such as:
 
 ```text
+Merge pull request #55 from Willie-Byte/docs/finalize-tetragon-live-pipeline-status
+Merge pull request #54 from Willie-Byte/docs/update-checklist-tetragon-downstream-normalizer-flow
 Merge pull request #53 from Willie-Byte/feature/validate-tetragon-downstream-normalizer-flow
 Merge pull request #52 from Willie-Byte/docs/update-checklist-tetragon-controlled-live-validation
 Merge pull request #51 from Willie-Byte/feature/tetragon-controlled-live-validation
-Merge pull request #50 from Willie-Byte/docs/update-checklist-tetragon-aks-dry-run-recovery
-Merge pull request #49 from Willie-Byte/docs/document-successful-tetragon-aks-dry-run-recovery
 ```
 
 ## 2. Use the Correct Node Version
@@ -2023,7 +2023,55 @@ What this verifies:
 - no automatic destructive remediation occurred
 
 
-## 41. RAG-Only Demo Safety Settings
+## 41. Verify Tetragon Live Pipeline Final Status
+
+PR #55 added the final live Tetragon pipeline status document.
+
+Final status document:
+
+```text
+backend/docs/tetragon-live-pipeline-final-status.md
+```
+
+The final status document confirms:
+
+```text
+AKS pod exec was captured by Tetragon.
+The Aura bridge classified unauthorizedPodExec.
+The bridge published to Kafka raw-telemetry.
+The telemetry normalizer created a normalized threat.
+The orchestrator generated a safe investigation remediation command.
+The worker validated the remediation command.
+The worker routed the command to the approval queue.
+The final result status was awaiting_approval.
+Production remediation remained disabled.
+```
+
+Verify the final status document:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+
+ls backend/docs/tetragon-live-pipeline-final-status.md
+grep -n "Tetragon Live Pipeline Final Status" backend/docs/tetragon-live-pipeline-final-status.md
+grep -n "LIVE PIPELINE VALIDATED SAFELY" backend/docs/tetragon-live-pipeline-final-status.md
+grep -n "Awaiting approval result" backend/docs/tetragon-live-pipeline-final-status.md
+grep -n "No production remediation was enabled" backend/docs/tetragon-live-pipeline-final-status.md
+grep -n "HEREDOC_MARKER_SHOULD_NOT_EXIST" backend/docs/tetragon-live-pipeline-final-status.md
+```
+
+The final grep should return nothing.
+
+What this verifies:
+
+- the final live Tetragon pipeline status is documented
+- the complete validated path is summarized in one place
+- safety gates are documented
+- production remediation remained disabled
+- no additional live AKS event is required for the checklist update
+
+
+## 42. RAG-Only Demo Safety Settings
 
 For a RAG-only demo, keep this in `backend/.env`:
 
@@ -2037,7 +2085,7 @@ RAG_CHAT_MODEL=gpt-4o-mini
 
 Do not commit real `.env` files.
 
-## 42. Safety Boundaries To Explain During Demo
+## 43. Safety Boundaries To Explain During Demo
 
 Aura V2 is intentionally conservative.
 
@@ -2071,21 +2119,22 @@ For the current demo:
 - The Tetragon AKS dry-run recovery result documents that AKS became reachable, local tests passed, and the dry-run helper passed
 - The Tetragon controlled live validation result proves real AKS pod exec telemetry can be classified and published to raw-telemetry safely
 - The Tetragon downstream normalizer flow validation proves the event reached the normalizer, orchestrator, worker, approval queue, and awaiting_approval result safely
+- The Tetragon live pipeline final status document summarizes the validated safe end-to-end live path and the remaining disabled capabilities
 - The system should not connect RAG directly to live Tetragon events yet
 - Rust eBPF enforcement work stays separate from RAG
 - Terraform apply mode is not production-ready
 
-## 43. Good Demo Explanation
+## 44. Good Demo Explanation
 
 Use this short explanation:
 
 ```text
 Aura V2 is an event-driven cloud remediation prototype. It uses Kafka to separate threat intake, AI-assisted remediation planning, validation, execution results, approval decisions, DLQ handling, and audit events. The system is safety-first, so real execution is blocked behind policy validation, simulation mode, and future approval controls.
 
-The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, an AKS validation checklist, a telemetry normalizer flow doc, local unauthorizedPodExec normalizer support, a local normalizer publisher payload test, a full local E2E test, a local negative-path E2E test, a one-command local Tetragon safety suite, a GitHub Actions CI workflow, an AKS dry-run validation helper, dedicated AKS validation checklist dry-run documentation, a controlled AKS dry-run execution result showing a safe blocked state when AKS/subscription readiness failed, an Azure AKS readiness recovery plan documenting required stop conditions before another live dry-run, a final Tetragon/AKS readiness status document marking live AKS validation as paused until Azure/AKS health is restored, a successful AKS dry-run recovery result documenting the quota root cause, restored AKS reachability, passing local Tetragon safety tests, and passing dry-run helper, and a controlled live AKS validation result proving that a real pod exec event can be captured by Tetragon, classified by Aura as unauthorizedPodExec, and published to Kafka raw-telemetry while production remediation remains disabled, and a downstream normalizer validation result proving the same event safely flowed through raw-telemetry, normalization, orchestration, worker validation, the approval queue, and an awaiting_approval result without automatic destructive remediation.
+The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, an AKS validation checklist, a telemetry normalizer flow doc, local unauthorizedPodExec normalizer support, a local normalizer publisher payload test, a full local E2E test, a local negative-path E2E test, a one-command local Tetragon safety suite, a GitHub Actions CI workflow, an AKS dry-run validation helper, dedicated AKS validation checklist dry-run documentation, a controlled AKS dry-run execution result showing a safe blocked state when AKS/subscription readiness failed, an Azure AKS readiness recovery plan documenting required stop conditions before another live dry-run, a final Tetragon/AKS readiness status document marking live AKS validation as paused until Azure/AKS health is restored, a successful AKS dry-run recovery result documenting the quota root cause, restored AKS reachability, passing local Tetragon safety tests, and passing dry-run helper, and a controlled live AKS validation result proving that a real pod exec event can be captured by Tetragon, classified by Aura as unauthorizedPodExec, and published to Kafka raw-telemetry while production remediation remains disabled, and a downstream normalizer validation result proving the same event safely flowed through raw-telemetry, normalization, orchestration, worker validation, the approval queue, and an awaiting_approval result without automatic destructive remediation, and a final live pipeline status document summarizing that the Tetragon live pipeline was validated safely while production remediation, Terraform apply, destructive Kubernetes actions, and direct RAG-to-live-telemetry automation remain disabled.
 ```
 
-## 44. Troubleshooting
+## 45. Troubleshooting
 
 ### RAG health returns 404
 
@@ -2303,6 +2352,40 @@ Expected result:
 ```
 
 This test should not require a real Kafka cluster.
+
+### Tetragon live pipeline final status does not appear
+
+Verify that PR #55 is included in your local `main` branch:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+git checkout main
+git pull
+git log --oneline -5
+```
+
+The recent commits should include:
+
+```text
+Merge pull request #55 from Willie-Byte/docs/finalize-tetragon-live-pipeline-status
+```
+
+Then verify the final status document exists:
+
+```bash
+ls backend/docs/tetragon-live-pipeline-final-status.md
+grep -n "Tetragon Live Pipeline Final Status" backend/docs/tetragon-live-pipeline-final-status.md
+grep -n "LIVE PIPELINE VALIDATED SAFELY" backend/docs/tetragon-live-pipeline-final-status.md
+grep -n "No production remediation was enabled" backend/docs/tetragon-live-pipeline-final-status.md
+```
+
+Expected result:
+
+```text
+Tetragon Live Pipeline Final Status
+LIVE PIPELINE VALIDATED SAFELY
+No production remediation was enabled
+```
 
 ### Tetragon downstream normalizer validation result does not appear
 
@@ -3025,7 +3108,7 @@ Verify:
 ps aux | grep "streaming" | grep -v grep
 ```
 
-## 45. Final Clean Check
+## 46. Final Clean Check
 
 Run:
 
@@ -3046,41 +3129,42 @@ nothing to commit, working tree clean
 Latest commits should include:
 
 ```text
+Merge pull request #55 from Willie-Byte/docs/finalize-tetragon-live-pipeline-status
+Merge pull request #54 from Willie-Byte/docs/update-checklist-tetragon-downstream-normalizer-flow
 Merge pull request #53 from Willie-Byte/feature/validate-tetragon-downstream-normalizer-flow
 Merge pull request #52 from Willie-Byte/docs/update-checklist-tetragon-controlled-live-validation
 Merge pull request #51 from Willie-Byte/feature/tetragon-controlled-live-validation
-Merge pull request #50 from Willie-Byte/docs/update-checklist-tetragon-aks-dry-run-recovery
-Merge pull request #49 from Willie-Byte/docs/document-successful-tetragon-aks-dry-run-recovery
 ```
 
-## 46. Recommended Next Branch
+## 47. Recommended Next Branch
 
 Next engineering branch:
 
 ```text
-docs/finalize-tetragon-live-pipeline-status
+docs/finalize-aura-v2-demo-readiness-summary
 ```
 
 Goal:
 
-Finalize the live Tetragon pipeline status after PR #51 and PR #53 proved the full safe path from AKS pod exec through Kafka, normalization, orchestration, worker validation, approval queue, and awaiting_approval result.
+Create a short demo-readiness summary that points to the completed Tetragon live pipeline status, the safety boundaries, and the main demo checklist.
 
 Required before starting:
 
 - `git status` is clean on `main`
-- PR #53 is merged
-- the downstream normalizer validation document exists
-- the demo checklist includes the downstream validation result
+- PR #55 is merged
+- the final live pipeline status document exists
+- the demo checklist includes the final live pipeline status document
 - production remediation remains disabled
 - no Terraform apply is run
 - no destructive kubectl actions are run
 
-The next validation step should remain documentation-focused:
+The next step should remain documentation/demo focused:
 
 ```text
-summarize final live pipeline status
-confirm safety gates
-do not trigger another live event unless needed
+summarize what Aura V2 can demo now
+point to the final status and checklist
+do not trigger another live AKS event
 do not enable production remediation
 ```
+
 
