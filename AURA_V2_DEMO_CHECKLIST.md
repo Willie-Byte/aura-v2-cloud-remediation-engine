@@ -65,11 +65,11 @@ nothing to commit, working tree clean
 The latest commits should include recent work such as:
 
 ```text
+Merge pull request #63 from Willie-Byte/feature/verify-approval-to-runner-safety-boundary
+Merge pull request #62 from Willie-Byte/docs/update-checklist-controlled-tetragon-simulator
 Merge pull request #61 from Willie-Byte/feature/controlled-tetragon-simulator-cron
 Merge pull request #60 from Willie-Byte/docs/polish-readme-demo-entrypoint
 Merge pull request #59 from Willie-Byte/docs/final-demo-polish-and-handoff
-Merge pull request #58 from Willie-Byte/docs/update-checklist-aura-v2-demo-readiness-summary
-Merge pull request #57 from Willie-Byte/docs/finalize-aura-v2-demo-readiness-summary
 ```
 
 ## 2. Use the Correct Node Version
@@ -2183,7 +2183,68 @@ What this verifies:
 - no recurring 4-minute schedule is enabled yet
 
 
-## 44. RAG-Only Demo Safety Settings
+## 44. Verify Approval-to-Runner Safety Boundary
+
+PR #63 added a dedicated approval-to-runner safety boundary document.
+
+Safety boundary document:
+
+```text
+backend/docs/approval-to-runner-safety-boundary.md
+```
+
+Final finding:
+
+```text
+APPROVE DOES NOT RUN PRODUCTION APPLY
+```
+
+The approval path is currently:
+
+```text
+approval route
+→ Kafka approval-decisions topic
+→ approval decision consumer
+→ simulated execution result
+→ execution-results topic
+```
+
+The approval path is not currently:
+
+```text
+approval route
+→ Terraform apply
+→ kubectl mutation
+→ Azure CLI mutation
+→ production execution runner
+```
+
+Verify the safety boundary document:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+
+ls backend/docs/approval-to-runner-safety-boundary.md
+
+grep -n "APPROVE DOES NOT RUN PRODUCTION APPLY" backend/docs/approval-to-runner-safety-boundary.md
+grep -n "simulation-only" backend/docs/approval-to-runner-safety-boundary.md
+grep -n "executionMode: simulate" backend/docs/approval-to-runner-safety-boundary.md
+grep -n "Final execution is still simulated for safety" backend/docs/approval-to-runner-safety-boundary.md
+grep -n "HEREDOC_MARKER_SHOULD_NOT_EXIST" backend/docs/approval-to-runner-safety-boundary.md
+```
+
+The final grep should return nothing.
+
+What this verifies:
+
+- dashboard approval does not call a production runner
+- approval decisions are still simulation-only
+- approval decisions preserve `executionMode: simulate`
+- approved decisions publish simulated execution results
+- no production Terraform apply is currently wired to approval
+
+
+## 45. RAG-Only Demo Safety Settings
 
 For a RAG-only demo, keep this in `backend/.env`:
 
@@ -2197,7 +2258,7 @@ RAG_CHAT_MODEL=gpt-4o-mini
 
 Do not commit real `.env` files.
 
-## 45. Safety Boundaries To Explain During Demo
+## 46. Safety Boundaries To Explain During Demo
 
 Aura V2 is intentionally conservative.
 
@@ -2234,21 +2295,22 @@ For the current demo:
 - The Tetragon live pipeline final status document summarizes the validated safe end-to-end live path and the remaining disabled capabilities
 - The Aura V2 demo readiness summary explains what is safe to demo and what remains intentionally disabled
 - The controlled Tetragon simulator exists but remains suspended by default until a deliberate schedule test is planned
+- Dashboard approval remains simulation-only and does not run production apply
 - The system should not connect RAG directly to live Tetragon events yet
 - Rust eBPF enforcement work stays separate from RAG
 - Terraform apply mode is not production-ready
 
-## 46. Good Demo Explanation
+## 47. Good Demo Explanation
 
 Use this short explanation:
 
 ```text
 Aura V2 is an event-driven cloud remediation prototype. It uses Kafka to separate threat intake, AI-assisted remediation planning, validation, execution results, approval decisions, DLQ handling, and audit events. The system is safety-first, so real execution is blocked behind policy validation, simulation mode, and future approval controls.
 
-The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, an AKS validation checklist, a telemetry normalizer flow doc, local unauthorizedPodExec normalizer support, a local normalizer publisher payload test, a full local E2E test, a local negative-path E2E test, a one-command local Tetragon safety suite, a GitHub Actions CI workflow, an AKS dry-run validation helper, dedicated AKS validation checklist dry-run documentation, a controlled AKS dry-run execution result showing a safe blocked state when AKS/subscription readiness failed, an Azure AKS readiness recovery plan documenting required stop conditions before another live dry-run, a final Tetragon/AKS readiness status document marking live AKS validation as paused until Azure/AKS health is restored, a successful AKS dry-run recovery result documenting the quota root cause, restored AKS reachability, passing local Tetragon safety tests, and passing dry-run helper, and a controlled live AKS validation result proving that a real pod exec event can be captured by Tetragon, classified by Aura as unauthorizedPodExec, and published to Kafka raw-telemetry while production remediation remains disabled, and a downstream normalizer validation result proving the same event safely flowed through raw-telemetry, normalization, orchestration, worker validation, the approval queue, and an awaiting_approval result without automatic destructive remediation, and a final live pipeline status document summarizing that the Tetragon live pipeline was validated safely while production remediation, Terraform apply, destructive Kubernetes actions, and direct RAG-to-live-telemetry automation remain disabled, and a demo readiness summary that clearly lists what Aura V2 can safely demonstrate now, and a controlled in-cluster simulator that can safely generate lab telemetry while remaining suspended by default.
+The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, an AKS validation checklist, a telemetry normalizer flow doc, local unauthorizedPodExec normalizer support, a local normalizer publisher payload test, a full local E2E test, a local negative-path E2E test, a one-command local Tetragon safety suite, a GitHub Actions CI workflow, an AKS dry-run validation helper, dedicated AKS validation checklist dry-run documentation, a controlled AKS dry-run execution result showing a safe blocked state when AKS/subscription readiness failed, an Azure AKS readiness recovery plan documenting required stop conditions before another live dry-run, a final Tetragon/AKS readiness status document marking live AKS validation as paused until Azure/AKS health is restored, a successful AKS dry-run recovery result documenting the quota root cause, restored AKS reachability, passing local Tetragon safety tests, and passing dry-run helper, and a controlled live AKS validation result proving that a real pod exec event can be captured by Tetragon, classified by Aura as unauthorizedPodExec, and published to Kafka raw-telemetry while production remediation remains disabled, and a downstream normalizer validation result proving the same event safely flowed through raw-telemetry, normalization, orchestration, worker validation, the approval queue, and an awaiting_approval result without automatic destructive remediation, and a final live pipeline status document summarizing that the Tetragon live pipeline was validated safely while production remediation, Terraform apply, destructive Kubernetes actions, and direct RAG-to-live-telemetry automation remain disabled, and a demo readiness summary that clearly lists what Aura V2 can safely demonstrate now, and a controlled in-cluster simulator that can safely generate lab telemetry while remaining suspended by default, plus an approval-to-runner safety audit proving approve does not run production apply.
 ```
 
-## 47. Troubleshooting
+## 48. Troubleshooting
 
 ### RAG health returns 404
 
@@ -2466,6 +2528,42 @@ Expected result:
 ```
 
 This test should not require a real Kafka cluster.
+
+### Approval-to-runner safety boundary does not appear
+
+Verify that PR #63 is included in your local `main` branch:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+git checkout main
+git pull
+git log --oneline -6
+```
+
+The recent commits should include:
+
+```text
+Merge pull request #63 from Willie-Byte/feature/verify-approval-to-runner-safety-boundary
+```
+
+Then verify the safety boundary document exists:
+
+```bash
+ls backend/docs/approval-to-runner-safety-boundary.md
+grep -n "APPROVE DOES NOT RUN PRODUCTION APPLY" backend/docs/approval-to-runner-safety-boundary.md
+grep -n "simulation-only" backend/docs/approval-to-runner-safety-boundary.md
+grep -n "executionMode: simulate" backend/docs/approval-to-runner-safety-boundary.md
+grep -n "Final execution is still simulated for safety" backend/docs/approval-to-runner-safety-boundary.md
+```
+
+Expected result:
+
+```text
+APPROVE DOES NOT RUN PRODUCTION APPLY
+simulation-only
+executionMode: simulate
+Final execution is still simulated for safety
+```
 
 ### Controlled Tetragon simulator validation does not appear
 
@@ -3295,7 +3393,7 @@ Verify:
 ps aux | grep "streaming" | grep -v grep
 ```
 
-## 48. Final Clean Check
+## 49. Final Clean Check
 
 Run:
 
@@ -3316,47 +3414,46 @@ nothing to commit, working tree clean
 Latest commits should include:
 
 ```text
+Merge pull request #63 from Willie-Byte/feature/verify-approval-to-runner-safety-boundary
+Merge pull request #62 from Willie-Byte/docs/update-checklist-controlled-tetragon-simulator
 Merge pull request #61 from Willie-Byte/feature/controlled-tetragon-simulator-cron
 Merge pull request #60 from Willie-Byte/docs/polish-readme-demo-entrypoint
 Merge pull request #59 from Willie-Byte/docs/final-demo-polish-and-handoff
-Merge pull request #58 from Willie-Byte/docs/update-checklist-aura-v2-demo-readiness-summary
-Merge pull request #57 from Willie-Byte/docs/finalize-aura-v2-demo-readiness-summary
 ```
 
-## 49. Recommended Next Branch
+## 50. Recommended Next Branch
 
 Next engineering branch:
 
 ```text
-feature/controlled-tetragon-simulator-schedule-test
+docs/document-controlled-simulator-schedule-test
 ```
 
 Goal:
 
-Run a short, controlled schedule test of the suspended simulator after the simulator checklist update is merged.
+Document the short controlled schedule test that temporarily unsuspended the simulator, allowed one scheduled run, then returned it to suspended.
 
 Required before starting:
 
 - `git status` is clean on `main`
-- PR #61 is merged
-- the simulator manifest exists
-- the simulator validation document exists
-- the demo checklist includes the simulator validation
-- the CronJob is currently suspended
+- PR #63 is merged
+- the approval-to-runner boundary document exists
+- the checklist includes the approval-to-runner safety boundary
+- the CronJob is currently suspended again
 - production remediation remains disabled
 - no Terraform apply is run
 - no destructive kubectl actions are run
 
-The next test must remain short and controlled:
+The result document should record:
 
 ```text
-verify suspend: true
-temporarily set suspend: false
-observe one or two scheduled cycles
-immediately set suspend: true
-document results
-do not use Termux or Tailscale yet
-do not enable production remediation
+scheduled job: aura-telemetry-stimulator-29669500
+pod: aura-telemetry-stimulator-29669500-x2gg8
+CronJob was temporarily set suspend: false
+CronJob was returned to suspend: true
+final result: awaiting_approval
+reason: human_approval_required
+APPROVE DOES NOT RUN PRODUCTION APPLY
 ```
 
 
