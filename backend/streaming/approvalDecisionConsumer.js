@@ -1,9 +1,20 @@
 require("dotenv").config({ path: __dirname + "/.env" });
 const kafka = require("./kafkaClient");
+const ApprovalDecision = require("../models/ApprovalDecision");
 const { publishAuditEvent } = require("./auditProducer");
+const { connectStreamingDb } = require("./streamingDb");
 
 const consumer = kafka.consumer({ groupId: "aura-v2-approval-decisions-group" });
 const producer = kafka.producer();
+
+function getKafkaMetadata({ topic, partition, message }) {
+  return {
+    topic,
+    partition,
+    offset: message.offset,
+    key: message.key?.toString() || "",
+  };
+}
 
 function getCanonicalRemediationPlan(decisionPayload) {
   return (
@@ -45,6 +56,10 @@ function getCanonicalExecutionMode(decisionPayload) {
   );
 }
 
+function getCanonicalDecidedAt(decisionPayload) {
+  return decisionPayload.decidedAt ? new Date(decisionPayload.decidedAt) : null;
+}
+
 function getPlanSource(decisionPayload) {
   if (decisionPayload.originalCommand?.remediationPlan) {
     return "original_ai_generated_remediation_plan";
@@ -55,6 +70,47 @@ function getPlanSource(decisionPayload) {
   }
 
   return "missing_remediation_plan";
+}
+
+async function persistApprovalDecision({
+  topic,
+  partition,
+  message,
+  decisionPayload,
+}) {
+  const kafkaMetadata = getKafkaMetadata({ topic, partition, message });
+
+  try {
+    await ApprovalDecision.create({
+      decisionId: decisionPayload.decisionId || `decision-${Date.now()}`,
+      approvalId: decisionPayload.approvalId || "unknown-approval",
+      remediationId: decisionPayload.remediationId || "unknown-remediation",
+      threatId: decisionPayload.threatId || "unknown-threat",
+      decision: decisionPayload.decision || "unknown",
+      decidedBy: decisionPayload.decidedBy || "unknown-reviewer",
+      decidedAt: getCanonicalDecidedAt(decisionPayload),
+      reason: decisionPayload.reason || "",
+      executionMode: getCanonicalExecutionMode(decisionPayload),
+      targetResource: decisionPayload.targetResource || "unknown-resource",
+      resourceType: decisionPayload.resourceType || "unknown-resource-type",
+      cloudProvider: decisionPayload.cloudProvider || "unknown-cloud",
+      issueType: decisionPayload.issueType || "unknown-issue",
+      action: getCanonicalAction(decisionPayload),
+      payload: decisionPayload,
+      kafka: kafkaMetadata,
+    });
+
+    console.log("Approval decision persisted to MongoDB.");
+  } catch (error) {
+    if (error.code === 11000) {
+      console.log(
+        `Approval decision already persisted for ${topic}[${partition}] offset ${message.offset}.`
+      );
+      return;
+    }
+
+    throw error;
+  }
 }
 
 async function publishExecutionResultFromDecision(
@@ -230,6 +286,8 @@ async function handleApprovalDecision(decisionPayload) {
 
 async function runApprovalDecisionConsumer() {
   try {
+    await connectStreamingDb();
+
     await consumer.connect();
     await producer.connect();
 
@@ -271,6 +329,13 @@ async function runApprovalDecisionConsumer() {
         console.log("Topic:", topic);
         console.log("Partition:", partition);
         console.log("Payload:", decisionPayload);
+
+        await persistApprovalDecision({
+          topic,
+          partition,
+          message,
+          decisionPayload,
+        });
 
         await publishAuditEvent("APPROVAL_DECISION_RECEIVED", {
           topic,
