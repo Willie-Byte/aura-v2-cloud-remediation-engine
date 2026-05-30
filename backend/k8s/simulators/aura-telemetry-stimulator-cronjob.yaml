@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: aura-telemetry-stimulator
+  namespace: aura-lab
+  labels:
+    app: aura-telemetry-stimulator
+    purpose: controlled-tetragon-simulation
+spec:
+  schedule: "*/4 * * * *"
+  suspend: true
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      ttlSecondsAfterFinished: 300
+      activeDeadlineSeconds: 60
+      template:
+        metadata:
+          labels:
+            app: aura-telemetry-stimulator
+            purpose: controlled-tetragon-simulation
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: stimulator
+              image: alpine:3.20
+              command:
+                - /usr/bin/id
+              resources:
+                requests:
+                  cpu: "25m"
+                  memory: "32Mi"
+                limits:
+                  cpu: "100m"
+                  memory: "64Mi"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                runAsUser: 1000
+                capabilities:
+                  drop:
+                    - ALL
