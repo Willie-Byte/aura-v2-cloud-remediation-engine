@@ -28,12 +28,7 @@ spec:
             - name: stimulator
               image: alpine:3.20
               command:
-                - /bin/sh
-                - -c
-                - |
-                  echo "===[ Starting Controlled Aura V2 Telemetry Stimulation ]==="
-                  id
-                  echo "===[ Stimulation Cycle Complete ]==="
+                - /usr/bin/id
               resources:
                 requests:
                   cpu: "25m"
