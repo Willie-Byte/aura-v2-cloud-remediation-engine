@@ -32,9 +32,7 @@ spec:
                 - -c
                 - |
                   echo "===[ Starting Controlled Aura V2 Telemetry Stimulation ]==="
-                  whoami
                   id
-                  uname -a
                   echo "===[ Stimulation Cycle Complete ]==="
               resources:
                 requests:
