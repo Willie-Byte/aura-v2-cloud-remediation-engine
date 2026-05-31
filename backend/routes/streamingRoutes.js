@@ -4,6 +4,12 @@ const {
   getAuditEvents,
   getExecutionResults,
 } = require("../streaming/streamState");
+const {
+  getStreamingAuditEvents,
+  getStreamingExecutionResults,
+  getStreamingApprovalRequests,
+  getStreamingApprovalDecisions,
+} = require("../controllers/streamingObservabilityController");
 
 router.get("/status", (req, res) => {
   res.status(200).json({
@@ -35,11 +41,16 @@ router.get("/audit-summary", (req, res) => {
   });
 });
 
-router.get("/execution-results", (req, res) => {
+router.get("/cached-execution-results", (req, res) => {
   res.status(200).json({
     count: getExecutionResults().length,
     results: getExecutionResults(),
   });
 });
+
+router.get("/audit-events", getStreamingAuditEvents);
+router.get("/execution-results", getStreamingExecutionResults);
+router.get("/approval-requests", getStreamingApprovalRequests);
+router.get("/approval-decisions", getStreamingApprovalDecisions);
 
 module.exports = router;
