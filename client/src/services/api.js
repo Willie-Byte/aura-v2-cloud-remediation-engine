@@ -31,7 +31,20 @@ export const getStreamingAuditSummary = () =>
   API.get("/streaming/audit-summary");
 
 export const getStreamingExecutionResults = () =>
-  API.get("/streaming/execution-results");
+  API.get("/streaming/cached-execution-results");
+
+export const getPersistentStreamingAuditEvents = (params = {}) =>
+  API.get("/streaming/audit-events", { params });
+
+export const getPersistentStreamingExecutionResults = (params = {}) =>
+  API.get("/streaming/execution-results", { params });
+
+export const getPersistentStreamingApprovalRequests = (params = {}) =>
+  API.get("/streaming/approval-requests", { params });
+
+export const getPersistentStreamingApprovalDecisions = (params = {}) =>
+  API.get("/streaming/approval-decisions", { params });
+
 
 export const sendStreamingApprovalDecision = (decisionPayload) =>
   API.post("/streaming-approvals/decision", decisionPayload);
