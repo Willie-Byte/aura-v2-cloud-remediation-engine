@@ -2405,8 +2405,70 @@ What this verifies:
 - duplicate Kafka offsets are handled safely
 - approval remains simulation-only after this storage update
 
+## 48. Verify Read-Only Streaming Observability API
 
-## 48. RAG-Only Demo Safety Settings
+PR #73 added the read-only streaming observability API summary for Aura V2.
+
+Read-only API summary document:
+
+```text
+backend/docs/read-only-streaming-observability-api-summary.md
+```
+
+Final read-only API status:
+
+```text
+READ-ONLY STREAMING OBSERVABILITY API ADDED SAFELY
+```
+
+The summary confirms these safe GET-only routes:
+
+```text
+GET /api/streaming/audit-events
+GET /api/streaming/execution-results
+GET /api/streaming/approval-requests
+GET /api/streaming/approval-decisions
+GET /api/streaming/cached-execution-results
+```
+
+The summary also confirms:
+
+```text
+APPROVE DOES NOT RUN PRODUCTION APPLY
+```
+
+Verify the read-only API summary document:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+
+ls backend/docs/read-only-streaming-observability-api-summary.md
+
+grep -n "READ-ONLY STREAMING OBSERVABILITY API ADDED SAFELY" backend/docs/read-only-streaming-observability-api-summary.md
+grep -n "GET /api/streaming/audit-events" backend/docs/read-only-streaming-observability-api-summary.md
+grep -n "GET /api/streaming/execution-results" backend/docs/read-only-streaming-observability-api-summary.md
+grep -n "GET /api/streaming/approval-requests" backend/docs/read-only-streaming-observability-api-summary.md
+grep -n "GET /api/streaming/approval-decisions" backend/docs/read-only-streaming-observability-api-summary.md
+grep -n "GET /api/streaming/cached-execution-results" backend/docs/read-only-streaming-observability-api-summary.md
+grep -n "APPROVE DOES NOT RUN PRODUCTION APPLY" backend/docs/read-only-streaming-observability-api-summary.md
+grep -n "HEREDOC_MARKER_SHOULD_NOT_EXIST" backend/docs/read-only-streaming-observability-api-summary.md
+```
+
+The final grep should return nothing.
+
+What this verifies:
+
+- persistent streaming observability now has read-only API routes
+- the API routes are GET-only
+- the old cached execution result route is still available
+- no approve route was added
+- no reject route was added
+- no execute route was added
+- no production apply behavior was added
+
+
+
+## 49. RAG-Only Demo Safety Settings
 
 For a RAG-only demo, keep this in `backend/.env`:
 
@@ -2420,7 +2482,7 @@ RAG_CHAT_MODEL=gpt-4o-mini
 
 Do not commit real `.env` files.
 
-## 49. Safety Boundaries To Explain During Demo
+## 50. Safety Boundaries To Explain During Demo
 
 Aura V2 is intentionally conservative.
 
@@ -2461,11 +2523,12 @@ For the current demo:
 - The controlled simulator schedule test passed, but the simulator must remain suspended by default
 - The controlled simulator and approval boundary phase is summarized in a final status document
 - Persistent audit/result storage has been added for streaming observability
+- Read-only API routes have been added for persistent streaming observability
 - The system should not connect RAG directly to live Tetragon events yet
 - Rust eBPF enforcement work stays separate from RAG
 - Terraform apply mode is not production-ready
 
-## 50. Good Demo Explanation
+## 51. Good Demo Explanation
 
 Use this short explanation:
 
@@ -2475,7 +2538,7 @@ Aura V2 is an event-driven cloud remediation prototype. It uses Kafka to separat
 The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, an AKS validation checklist, a telemetry normalizer flow doc, local unauthorizedPodExec normalizer support, a local normalizer publisher payload test, a full local E2E test, a local negative-path E2E test, a one-command local Tetragon safety suite, a GitHub Actions CI workflow, an AKS dry-run validation helper, dedicated AKS validation checklist dry-run documentation, a controlled AKS dry-run execution result showing a safe blocked state when AKS/subscription readiness failed, an Azure AKS readiness recovery plan documenting required stop conditions before another live dry-run, a final Tetragon/AKS readiness status document marking live AKS validation as paused until Azure/AKS health is restored, a successful AKS dry-run recovery result documenting the quota root cause, restored AKS reachability, passing local Tetragon safety tests, and passing dry-run helper, and a controlled live AKS validation result proving that a real pod exec event can be captured by Tetragon, classified by Aura as unauthorizedPodExec, and published to Kafka raw-telemetry while production remediation remains disabled, and a downstream normalizer validation result proving the same event safely flowed through raw-telemetry, normalization, orchestration, worker validation, the approval queue, and an awaiting_approval result without automatic destructive remediation, and a final live pipeline status document summarizing that the Tetragon live pipeline was validated safely while production remediation, Terraform apply, destructive Kubernetes actions, and direct RAG-to-live-telemetry automation remain disabled, and a demo readiness summary that clearly lists what Aura V2 can safely demonstrate now, and a controlled in-cluster simulator that can safely generate lab telemetry while remaining suspended by default, plus an approval-to-runner safety audit proving approve does not run production apply, and a short controlled schedule test proving the simulator can be briefly unsuspended and safely returned to suspended mode, with a final summary document wrapping the simulator and approval boundary phase, plus persistent MongoDB storage for streaming audit events, execution results, approval requests, and approval decisions.
 ```
 
-## 51. Troubleshooting
+## 52. Troubleshooting
 
 ### RAG health returns 404
 
@@ -3670,7 +3733,7 @@ Verify:
 ps aux | grep "streaming" | grep -v grep
 ```
 
-## 52. Final Clean Check
+## 53. Final Clean Check
 
 Run:
 
@@ -3698,37 +3761,36 @@ Merge pull request #67 from Willie-Byte/docs/finalize-controlled-simulator-and-a
 Merge pull request #66 from Willie-Byte/docs/update-checklist-controlled-simulator-schedule-test
 ```
 
-## 53. Recommended Next Branch
+## 54. Recommended Next Branch
 
 Next engineering branch:
 
 ```text
-feature/read-only-streaming-observability-api
+feature/frontend-streaming-observability-dashboard
 ```
 
 Goal:
 
-Expose the new persistent streaming storage through safe read-only API endpoints for audit events, execution results, approval requests, and approval decisions.
+Display the read-only streaming observability API data in the frontend/admin dashboard.
 
 Required before starting:
 
 - `git status` is clean on `main`
-- PR #70 is merged
-- the persistent storage summary exists
-- the checklist includes the persistent storage summary
+- PR #73 is merged
+- the read-only streaming observability API summary exists
+- the checklist includes the read-only streaming observability API summary
 - production remediation remains disabled
 - no Terraform apply is run
 - no destructive kubectl actions are run
 
-Recommended first endpoints:
+Recommended dashboard views:
 
 ```text
-GET /api/streaming/audit-events
-GET /api/streaming/execution-results
-GET /api/streaming/approval-requests
-GET /api/streaming/approval-decisions
+Audit Events
+Execution Results
+Approval Requests
+Approval Decisions
 ```
 
-These endpoints must be read-only and must not approve, reject, create, or execute remediations.
-
+The dashboard should be read-only first and must not add approve/reject/execute controls in this phase.
 
