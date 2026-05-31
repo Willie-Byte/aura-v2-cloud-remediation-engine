@@ -2561,10 +2561,110 @@ What this verifies:
 - the new dashboard does not add approve/reject/execute controls
 - the new dashboard does not mutate cloud infrastructure
 
+## 50. Verify Frontend Observability Dashboard Polish
+
+PR #79 added the frontend observability dashboard polish summary for Aura V2.
+
+Frontend polish summary document:
+
+```text
+backend/docs/frontend-observability-dashboard-polish-summary.md
+```
+
+Final frontend polish status:
+
+```text
+FRONTEND OBSERVABILITY DASHBOARD POLISHED SAFELY
+```
+
+The summary confirms these polish features:
+
+```text
+pagination controls
+rows-per-page selector
+local client-side filter
+auto-refresh toggle
+refresh interval selector
+better empty states
+responsive dashboard layout polish
+```
+
+The summary also confirms the dashboard remains read-only:
+
+```text
+No API.post calls
+No API.patch calls
+No approve controls
+No reject controls
+No execute controls
+No Terraform apply controls
+No kubectl controls
+No Azure mutation controls
+```
+
+Verify the frontend polish summary document:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+
+ls backend/docs/frontend-observability-dashboard-polish-summary.md
+
+grep -n "FRONTEND OBSERVABILITY DASHBOARD POLISHED SAFELY" backend/docs/frontend-observability-dashboard-polish-summary.md
+grep -n "pagination controls" backend/docs/frontend-observability-dashboard-polish-summary.md
+grep -n "rows-per-page selector" backend/docs/frontend-observability-dashboard-polish-summary.md
+grep -n "local client-side filter" backend/docs/frontend-observability-dashboard-polish-summary.md
+grep -n "auto-refresh toggle" backend/docs/frontend-observability-dashboard-polish-summary.md
+grep -n "better empty states" backend/docs/frontend-observability-dashboard-polish-summary.md
+grep -n "npm run build" backend/docs/frontend-observability-dashboard-polish-summary.md
+grep -n "API.post" backend/docs/frontend-observability-dashboard-polish-summary.md
+grep -n "API.patch" backend/docs/frontend-observability-dashboard-polish-summary.md
+grep -n "HEREDOC_MARKER_SHOULD_NOT_EXIST" backend/docs/frontend-observability-dashboard-polish-summary.md
+```
+
+The final grep should return nothing.
+
+Verify the polished frontend dashboard:
+
+```bash
+grep -n "pagination" client/src/pages/StreamingObservabilityPage.js
+grep -n "filterText" client/src/pages/StreamingObservabilityPage.js
+grep -n "autoRefreshEnabled" client/src/pages/StreamingObservabilityPage.js
+grep -n "Rows per page" client/src/pages/StreamingObservabilityPage.js
+grep -n "Read-only safety boundary" client/src/pages/StreamingObservabilityPage.js
+
+grep -n "observability-controls-grid" client/src/App.css
+grep -n "observability-pagination" client/src/App.css
+grep -n "observability-empty-state" client/src/App.css
+```
+
+Verify the new page still has no write/action helpers:
+
+```bash
+grep -n "API.post\|API.patch\|sendStreamingApprovalDecision\|approveRemediation\|rejectRemediation\|deployRemediation" client/src/pages/StreamingObservabilityPage.js
+```
+
+Expected result:
+
+```text
+No output
+```
+
+What this verifies:
+
+- the frontend observability dashboard has usability polish
+- pagination controls exist
+- filter controls exist
+- auto-refresh controls exist
+- empty states are improved
+- responsive CSS exists
+- the dashboard remains read-only
+- no approve/reject/execute controls were added
 
 
 
-## 50. RAG-Only Demo Safety Settings
+
+
+## 51. RAG-Only Demo Safety Settings
 
 For a RAG-only demo, keep this in `backend/.env`:
 
@@ -2578,7 +2678,7 @@ RAG_CHAT_MODEL=gpt-4o-mini
 
 Do not commit real `.env` files.
 
-## 51. Safety Boundaries To Explain During Demo
+## 52. Safety Boundaries To Explain During Demo
 
 Aura V2 is intentionally conservative.
 
@@ -2621,11 +2721,12 @@ For the current demo:
 - Persistent audit/result storage has been added for streaming observability
 - Read-only API routes have been added for persistent streaming observability
 - Frontend read-only dashboard has been added for persistent streaming observability
+- Frontend observability dashboard polish has been added while preserving read-only behavior
 - The system should not connect RAG directly to live Tetragon events yet
 - Rust eBPF enforcement work stays separate from RAG
 - Terraform apply mode is not production-ready
 
-## 52. Good Demo Explanation
+## 53. Good Demo Explanation
 
 Use this short explanation:
 
@@ -2635,7 +2736,7 @@ Aura V2 is an event-driven cloud remediation prototype. It uses Kafka to separat
 The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, an AKS validation checklist, a telemetry normalizer flow doc, local unauthorizedPodExec normalizer support, a local normalizer publisher payload test, a full local E2E test, a local negative-path E2E test, a one-command local Tetragon safety suite, a GitHub Actions CI workflow, an AKS dry-run validation helper, dedicated AKS validation checklist dry-run documentation, a controlled AKS dry-run execution result showing a safe blocked state when AKS/subscription readiness failed, an Azure AKS readiness recovery plan documenting required stop conditions before another live dry-run, a final Tetragon/AKS readiness status document marking live AKS validation as paused until Azure/AKS health is restored, a successful AKS dry-run recovery result documenting the quota root cause, restored AKS reachability, passing local Tetragon safety tests, and passing dry-run helper, and a controlled live AKS validation result proving that a real pod exec event can be captured by Tetragon, classified by Aura as unauthorizedPodExec, and published to Kafka raw-telemetry while production remediation remains disabled, and a downstream normalizer validation result proving the same event safely flowed through raw-telemetry, normalization, orchestration, worker validation, the approval queue, and an awaiting_approval result without automatic destructive remediation, and a final live pipeline status document summarizing that the Tetragon live pipeline was validated safely while production remediation, Terraform apply, destructive Kubernetes actions, and direct RAG-to-live-telemetry automation remain disabled, and a demo readiness summary that clearly lists what Aura V2 can safely demonstrate now, and a controlled in-cluster simulator that can safely generate lab telemetry while remaining suspended by default, plus an approval-to-runner safety audit proving approve does not run production apply, and a short controlled schedule test proving the simulator can be briefly unsuspended and safely returned to suspended mode, with a final summary document wrapping the simulator and approval boundary phase, plus persistent MongoDB storage for streaming audit events, execution results, approval requests, and approval decisions.
 ```
 
-## 53. Troubleshooting
+## 54. Troubleshooting
 
 ### RAG health returns 404
 
@@ -3830,7 +3931,7 @@ Verify:
 ps aux | grep "streaming" | grep -v grep
 ```
 
-## 54. Final Clean Check
+## 55. Final Clean Check
 
 Run:
 
@@ -3858,37 +3959,42 @@ Merge pull request #67 from Willie-Byte/docs/finalize-controlled-simulator-and-a
 Merge pull request #66 from Willie-Byte/docs/update-checklist-controlled-simulator-schedule-test
 ```
 
-## 55. Recommended Next Branch
+## 56. Recommended Next Branch
 
 Next engineering branch:
 
 ```text
-feature/frontend-streaming-observability-dashboard-polish
+feature/controlled-bot-to-dashboard-validation
 ```
 
 Goal:
 
-Polish the frontend read-only streaming observability dashboard with pagination controls, filters, clearer empty states, and responsive layout improvements.
+Validate that a controlled simulator/bot action can flow safely from detection to the frontend dashboard.
 
 Required before starting:
 
 - `git status` is clean on `main`
-- PR #76 is merged
-- the frontend streaming observability dashboard summary exists
-- the checklist includes the frontend streaming observability dashboard summary
+- PR #79 is merged
+- the frontend observability dashboard polish summary exists
+- the checklist includes the frontend polish summary
 - production remediation remains disabled
 - no Terraform apply is run
 - no destructive kubectl actions are run
 
-Recommended polish items:
+Recommended safe validation path:
 
 ```text
-Pagination controls
-Filter inputs
-Better empty states
-Mobile layout polish
-Optional refresh interval toggle
+controlled simulator action
+Tetragon detection
+aura-tetragon-bridge publish
+Kafka pipeline
+normalizer
+orchestrator
+approval queue
+MongoDB persistence
+read-only API
+frontend Observability dashboard
 ```
 
-The dashboard must remain read-only and must not add approve/reject/execute controls in this phase.
+The validation must use harmless simulator actions only and must not attack external systems or mutate infrastructure.
 
