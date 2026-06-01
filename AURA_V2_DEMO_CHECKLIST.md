@@ -2664,7 +2664,139 @@ What this verifies:
 
 
 
-## 51. RAG-Only Demo Safety Settings
+
+## 51. Verify Controlled Bot-to-Dashboard Validation
+
+PR #82 documented the successful controlled bot-to-dashboard validation.
+
+Validation summary document:
+
+```text
+backend/docs/controlled-bot-to-dashboard-validation-summary.md
+```
+
+Final validation status:
+
+```text
+CONTROLLED BOT-TO-DASHBOARD VALIDATION SUCCEEDED SAFELY
+```
+
+The successful validation path was:
+
+```text
+controlled simulator job
+→ Tetragon eBPF process_exec detection
+→ aura-tetragon-bridge
+→ Kafka raw-telemetry
+→ telemetry normalizer
+→ Kafka threat-ingest
+→ orchestrator
+→ remediation command
+→ worker
+→ approval queue
+→ execution result
+→ Kafka audit-log / execution-results / approval-queue
+→ MongoDB persistence
+→ read-only streaming API
+→ frontend Observability dashboard
+→ Streaming Monitor approval controls
+```
+
+Controlled validation resource:
+
+```text
+aura-lab/aura-telemetry-stimulator-bot-validation-004-bn6cz
+```
+
+Safety boundary confirmed:
+
+```text
+executionMode: simulate
+status: awaiting_approval
+reason: human_approval_required
+No Terraform apply was run.
+No destructive kubectl action was run.
+No production mutation was performed.
+```
+
+Verify the validation summary document:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+
+ls backend/docs/controlled-bot-to-dashboard-validation-summary.md
+
+grep -n "CONTROLLED BOT-TO-DASHBOARD VALIDATION SUCCEEDED SAFELY" backend/docs/controlled-bot-to-dashboard-validation-summary.md
+grep -n "bot-validation-004" backend/docs/controlled-bot-to-dashboard-validation-summary.md
+grep -n "executionMode: simulate" backend/docs/controlled-bot-to-dashboard-validation-summary.md
+grep -n "status: awaiting_approval" backend/docs/controlled-bot-to-dashboard-validation-summary.md
+grep -n "human_approval_required" backend/docs/controlled-bot-to-dashboard-validation-summary.md
+grep -n "No Terraform apply" backend/docs/controlled-bot-to-dashboard-validation-summary.md
+grep -n "Streaming Monitor approval-control proof" backend/docs/controlled-bot-to-dashboard-validation-summary.md
+grep -n "HEREDOC_MARKER_SHOULD_NOT_EXIST" backend/docs/controlled-bot-to-dashboard-validation-summary.md
+```
+
+The final grep should return nothing.
+
+Verify the read-only API still returns persisted records:
+
+```bash
+curl -s "http://localhost:5001/api/streaming/audit-events?limit=5" | python3 -m json.tool
+
+curl -s "http://localhost:5001/api/streaming/execution-results?limit=5" | python3 -m json.tool
+
+curl -s "http://localhost:5001/api/streaming/approval-requests?limit=5" | python3 -m json.tool
+```
+
+Expected persisted record fields:
+
+```text
+targetResource: aura-lab/aura-telemetry-stimulator-bot-validation-004-bn6cz
+executionMode: simulate
+status: awaiting_approval
+reason: human_approval_required
+issueType: unauthorizedPodExec
+resourceType: aksPod
+cloudProvider: azure
+```
+
+Verify frontend manually:
+
+```text
+http://localhost:3000/streaming-observability
+http://localhost:3000/streaming-monitor
+```
+
+Filter:
+
+```text
+bot-validation-004
+```
+
+Expected frontend result:
+
+```text
+Observability dashboard shows persisted audit records.
+Streaming Monitor shows persistent approval-ready records.
+Approval controls are visible in Streaming Monitor.
+Observability dashboard remains read-only.
+```
+
+What this proves:
+
+- the controlled simulator job was detected by Tetragon
+- the bridge published raw telemetry
+- Kafka carried the event through the pipeline
+- the normalizer created a threat
+- the orchestrator generated remediation
+- the worker routed to approval
+- MongoDB persistence worked
+- the read-only API exposed persisted records
+- the frontend dashboards displayed the records
+- approval controls are separated from read-only observability
+- no destructive action occurred
+
+## 52. RAG-Only Demo Safety Settings
 
 For a RAG-only demo, keep this in `backend/.env`:
 
@@ -2678,7 +2810,7 @@ RAG_CHAT_MODEL=gpt-4o-mini
 
 Do not commit real `.env` files.
 
-## 52. Safety Boundaries To Explain During Demo
+## 53. Safety Boundaries To Explain During Demo
 
 Aura V2 is intentionally conservative.
 
@@ -2722,11 +2854,12 @@ For the current demo:
 - Read-only API routes have been added for persistent streaming observability
 - Frontend read-only dashboard has been added for persistent streaming observability
 - Frontend observability dashboard polish has been added while preserving read-only behavior
+- Controlled bot-to-dashboard validation has been completed safely and documented
 - The system should not connect RAG directly to live Tetragon events yet
 - Rust eBPF enforcement work stays separate from RAG
 - Terraform apply mode is not production-ready
 
-## 53. Good Demo Explanation
+## 54. Good Demo Explanation
 
 Use this short explanation:
 
@@ -2736,7 +2869,7 @@ Aura V2 is an event-driven cloud remediation prototype. It uses Kafka to separat
 The current main branch also adds a local Vector RAG system. Aura can answer project-specific questions using local architecture documents and selected source-code files stored in Qdrant with OpenAI embeddings. The RAG UI now includes polished preset cards, source type badges, and a source summary banner for fast demos, so a presenter can quickly show architecture, source-code, Kafka, Qdrant, worker-validation, safety-boundary, and Tetragon searches while clearly showing whether each answer came from source code, architecture documents, streaming documents, policy documents, telemetry documents, or mixed retrieved context. Aura also includes a clean Tetragon bridge, a local fixture-based classification test, a `.jsonl` log replay test, a mock Kafka publisher payload test, an AKS deployment guide, an AKS validation checklist, a telemetry normalizer flow doc, local unauthorizedPodExec normalizer support, a local normalizer publisher payload test, a full local E2E test, a local negative-path E2E test, a one-command local Tetragon safety suite, a GitHub Actions CI workflow, an AKS dry-run validation helper, dedicated AKS validation checklist dry-run documentation, a controlled AKS dry-run execution result showing a safe blocked state when AKS/subscription readiness failed, an Azure AKS readiness recovery plan documenting required stop conditions before another live dry-run, a final Tetragon/AKS readiness status document marking live AKS validation as paused until Azure/AKS health is restored, a successful AKS dry-run recovery result documenting the quota root cause, restored AKS reachability, passing local Tetragon safety tests, and passing dry-run helper, and a controlled live AKS validation result proving that a real pod exec event can be captured by Tetragon, classified by Aura as unauthorizedPodExec, and published to Kafka raw-telemetry while production remediation remains disabled, and a downstream normalizer validation result proving the same event safely flowed through raw-telemetry, normalization, orchestration, worker validation, the approval queue, and an awaiting_approval result without automatic destructive remediation, and a final live pipeline status document summarizing that the Tetragon live pipeline was validated safely while production remediation, Terraform apply, destructive Kubernetes actions, and direct RAG-to-live-telemetry automation remain disabled, and a demo readiness summary that clearly lists what Aura V2 can safely demonstrate now, and a controlled in-cluster simulator that can safely generate lab telemetry while remaining suspended by default, plus an approval-to-runner safety audit proving approve does not run production apply, and a short controlled schedule test proving the simulator can be briefly unsuspended and safely returned to suspended mode, with a final summary document wrapping the simulator and approval boundary phase, plus persistent MongoDB storage for streaming audit events, execution results, approval requests, and approval decisions.
 ```
 
-## 54. Troubleshooting
+## 55. Troubleshooting
 
 ### RAG health returns 404
 
@@ -3931,7 +4064,7 @@ Verify:
 ps aux | grep "streaming" | grep -v grep
 ```
 
-## 55. Final Clean Check
+## 56. Final Clean Check
 
 Run:
 
@@ -3959,42 +4092,71 @@ Merge pull request #67 from Willie-Byte/docs/finalize-controlled-simulator-and-a
 Merge pull request #66 from Willie-Byte/docs/update-checklist-controlled-simulator-schedule-test
 ```
 
-## 56. Recommended Next Branch
+## 57. Recommended Next Branch
 
 Next engineering branch:
 
 ```text
-feature/controlled-bot-to-dashboard-validation
+docs/final-demo-readiness-controlled-observability
 ```
 
 Goal:
 
-Validate that a controlled simulator/bot action can flow safely from detection to the frontend dashboard.
-
-Required before starting:
-
-- `git status` is clean on `main`
-- PR #79 is merged
-- the frontend observability dashboard polish summary exists
-- the checklist includes the frontend polish summary
-- production remediation remains disabled
-- no Terraform apply is run
-- no destructive kubectl actions are run
-
-Recommended safe validation path:
+Prepare a final demo-readiness summary that ties together:
 
 ```text
-controlled simulator action
-Tetragon detection
-aura-tetragon-bridge publish
-Kafka pipeline
-normalizer
-orchestrator
-approval queue
-MongoDB persistence
-read-only API
+persistent streaming storage
+read-only observability API
 frontend Observability dashboard
+Streaming Monitor persistent approval data
+controlled bot-to-dashboard validation
+safe approval-gated simulation boundary
 ```
 
-The validation must use harmless simulator actions only and must not attack external systems or mutate infrastructure.
+The final demo summary should clearly state:
+
+```text
+No Terraform apply
+No destructive kubectl action
+No production mutation
+Execution remains simulate / awaiting_approval unless explicitly changed in a future approved branch
+```
+
+### Controlled bot-to-dashboard validation summary does not appear
+
+Verify that PR #82 is included in your local `main` branch:
+
+```bash
+cd ~/Desktop/Aura-V2-Streaming-Spike
+git checkout main
+git pull
+git log --oneline -8
+```
+
+The recent commits should include:
+
+```text
+Merge pull request #82 from Willie-Byte/docs/document-controlled-bot-to-dashboard-validation
+```
+
+Then verify the summary document exists:
+
+```bash
+ls backend/docs/controlled-bot-to-dashboard-validation-summary.md
+grep -n "CONTROLLED BOT-TO-DASHBOARD VALIDATION SUCCEEDED SAFELY" backend/docs/controlled-bot-to-dashboard-validation-summary.md
+grep -n "bot-validation-004" backend/docs/controlled-bot-to-dashboard-validation-summary.md
+grep -n "executionMode: simulate" backend/docs/controlled-bot-to-dashboard-validation-summary.md
+grep -n "status: awaiting_approval" backend/docs/controlled-bot-to-dashboard-validation-summary.md
+grep -n "human_approval_required" backend/docs/controlled-bot-to-dashboard-validation-summary.md
+```
+
+Expected result:
+
+```text
+CONTROLLED BOT-TO-DASHBOARD VALIDATION SUCCEEDED SAFELY
+bot-validation-004
+executionMode: simulate
+status: awaiting_approval
+human_approval_required
+```
 
