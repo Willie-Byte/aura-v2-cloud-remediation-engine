@@ -3,6 +3,10 @@ import {
   getStreamingStatus,
   getStreamingAuditSummary,
   getStreamingExecutionResults,
+  getPersistentStreamingAuditEvents,
+  getPersistentStreamingExecutionResults,
+  getPersistentStreamingApprovalRequests,
+  getPersistentStreamingApprovalDecisions,
   sendStreamingApprovalDecision,
 } from "../services/api";
 
@@ -10,6 +14,14 @@ function StreamingMonitorPage() {
   const [streamStatus, setStreamStatus] = useState(null);
   const [auditData, setAuditData] = useState({ count: 0, events: [] });
   const [resultsData, setResultsData] = useState({ count: 0, results: [] });
+  const [approvalRequestsData, setApprovalRequestsData] = useState({
+    count: 0,
+    requests: [],
+  });
+  const [approvalDecisionsData, setApprovalDecisionsData] = useState({
+    count: 0,
+    decisions: [],
+  });
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -25,16 +37,37 @@ function StreamingMonitorPage() {
         setIsRefreshing(true);
       }
 
-      const [statusResponse, auditResponse, resultsResponse] =
-        await Promise.all([
-          getStreamingStatus(),
-          getStreamingAuditSummary(),
-          getStreamingExecutionResults(),
-        ]);
+      const [
+        statusResponse,
+        auditResponse,
+        resultsResponse,
+        approvalRequestsResponse,
+        approvalDecisionsResponse,
+      ] = await Promise.all([
+        getStreamingStatus(),
+        getPersistentStreamingAuditEvents({ limit: 25 }),
+        getPersistentStreamingExecutionResults({ limit: 25 }),
+        getPersistentStreamingApprovalRequests({ limit: 25 }),
+        getPersistentStreamingApprovalDecisions({ limit: 25 }),
+      ]);
 
       setStreamStatus(statusResponse.data);
-      setAuditData(auditResponse.data);
-      setResultsData(resultsResponse.data);
+      setAuditData({
+        count: auditResponse.data.count || 0,
+        events: auditResponse.data.events || [],
+      });
+      setResultsData({
+        count: resultsResponse.data.count || 0,
+        results: resultsResponse.data.results || [],
+      });
+      setApprovalRequestsData({
+        count: approvalRequestsResponse.data.count || 0,
+        requests: approvalRequestsResponse.data.requests || [],
+      });
+      setApprovalDecisionsData({
+        count: approvalDecisionsResponse.data.count || 0,
+        decisions: approvalDecisionsResponse.data.decisions || [],
+      });
       setErrorMessage("");
       setLastUpdated(new Date());
     } catch (error) {
@@ -66,12 +99,72 @@ function StreamingMonitorPage() {
     return new Date(value).toLocaleString();
   };
 
+  const getApprovalRequestForResult = (result) => {
+    return approvalRequestsData.requests.find(
+      (request) =>
+        request.remediationId === result.remediationId ||
+        request.threatId === result.threatId ||
+        request.targetResource === result.targetResource
+    );
+  };
+
+  const getApprovalDecisionForResult = (result) => {
+    return approvalDecisionsData.decisions.find(
+      (decision) =>
+        decision.remediationId === result.remediationId ||
+        decision.threatId === result.threatId ||
+        decision.targetResource === result.targetResource
+    );
+  };
+
   const getApprovalEventForResult = (result) => {
+    const persistentRequest = getApprovalRequestForResult(result);
+
+    if (persistentRequest) {
+      return {
+        eventType: "REMEDIATION_AWAITING_APPROVAL",
+        payload: persistentRequest,
+      };
+    }
+
     return auditData.events.find(
       (event) =>
         event.eventType === "REMEDIATION_AWAITING_APPROVAL" &&
         event.payload?.remediationId === result.remediationId
     );
+  };
+
+  const enrichExecutionResult = (result) => {
+    const approvalRequest = getApprovalRequestForResult(result);
+    const approvalDecision = getApprovalDecisionForResult(result);
+
+    return {
+      ...result,
+      timestamp:
+        result.timestamp ||
+        result.resultTimestamp ||
+        result.payload?.timestamp ||
+        result.createdAt,
+      details:
+        result.details ||
+        result.payload?.details ||
+        (result.reason
+          ? {
+              reason: result.reason,
+              message:
+                result.reason === "human_approval_required"
+                  ? "Remediation command requires human approval and was sent to the approval queue."
+                  : result.reason,
+            }
+          : undefined),
+      remediationPlan:
+        result.remediationPlan ||
+        result.payload?.remediationPlan ||
+        approvalRequest?.remediationPlan ||
+        approvalRequest?.payload?.remediationPlan,
+      approvalId: approvalRequest?.approvalId || result.approvalId,
+      approvalDecision: approvalDecision || result.approvalDecision,
+    };
   };
 
   const handleApprovalDecision = async (result, decision) => {
@@ -96,7 +189,11 @@ function StreamingMonitorPage() {
         resourceType: result.resourceType,
         cloudProvider: result.cloudProvider,
         issueType: result.issueType,
-        action: result.remediationPlan?.action || "restrictSSHAccess",
+        action:
+          result.remediationPlan?.action ||
+          result.payload?.remediationPlan?.action ||
+          result.action ||
+          "investigateUnauthorizedPodExec",
         riskLevel: result.remediationPlan?.riskLevel || "high",
         decidedBy: "dashboard-reviewer",
         reason:
@@ -555,35 +652,35 @@ function StreamingMonitorPage() {
             <div className="summary-card">
               <p className="summary-label">Approval Queue</p>
               <h3 style={{ fontSize: "16px" }}>
-                {streamStatus.topics.approvalQueue || "approval-queue"}
+                {streamStatus.topics?.approvalQueue || "approval-queue"}
               </h3>
             </div>
 
             <div className="summary-card">
               <p className="summary-label">Approval Decisions</p>
               <h3 style={{ fontSize: "16px" }}>
-                {streamStatus.topics.approvalDecisions || "approval-decisions"}
+                {streamStatus.topics?.approvalDecisions || "approval-decisions"}
               </h3>
             </div>
 
             <div className="summary-card">
               <p className="summary-label">DLQ</p>
               <h3 style={{ fontSize: "16px" }}>
-                {streamStatus.topics.remediationDlq}
+                {streamStatus.topics?.remediationDlq || "remediation-dlq"}
               </h3>
             </div>
 
             <div className="summary-card">
               <p className="summary-label">Audit Log</p>
               <h3 style={{ fontSize: "16px" }}>
-                {streamStatus.topics.auditLog}
+                {streamStatus.topics?.auditLog || "audit-log"}
               </h3>
             </div>
 
             <div className="summary-card">
               <p className="summary-label">Execution Results</p>
               <h3 style={{ fontSize: "16px" }}>
-                {streamStatus.topics.executionResults}
+                {streamStatus.topics?.executionResults || "execution-results"}
               </h3>
             </div>
           </div>
@@ -598,7 +695,8 @@ function StreamingMonitorPage() {
         {resultsData.results.length === 0 ? (
           <p className="empty-text">No execution results yet.</p>
         ) : (
-          resultsData.results.map((result) => {
+          resultsData.results.map((rawResult) => {
+            const result = enrichExecutionResult(rawResult);
             const approvalEvent = getApprovalEventForResult(result);
             const approvalId = approvalEvent?.payload?.approvalId;
 
@@ -611,7 +709,7 @@ function StreamingMonitorPage() {
             const isDecisionLoading = isApproveLoading || isRejectLoading;
 
             return (
-              <div key={result.resultId} className="card audit-item">
+              <div key={result.resultId || result._id || result.remediationId} className="card audit-item">
                 <div className="meta-row">
                   <span className={getExecutionStatusClass(result.status)}>
                     {result.status}
